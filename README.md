@@ -3,11 +3,14 @@
 Steer a quantum wave packet at a potential barrier and tune how much tunnels through. A C11 solver for the 1D time-dependent Schrödinger equation (Crank–Nicolson, unitary) with a terminal view.
 (C言語の1次元シュレーディンガー方程式ソルバ。障壁の位置と高さを操作して、トンネル透過率を確かめます。)
 
+![demo](docs/demo.gif)
+
 ## Run
 
 ```sh
 make && ./quantum-wave-hopper          # interactive
 ./quantum-wave-hopper --snapshot       # one frame, no terminal needed
+./quantum-wave-hopper --gif docs/demo.gif  # scripted tunnelling run as an animated GIF
 make test && make plots                # unit tests and docs/*.svg
 docker build -t quantum-wave-hopper .  # same, reproducibly
 ```

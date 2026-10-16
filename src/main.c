@@ -7,6 +7,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "gif.h"
 #include "render.h"
 #include "svg.h"
 #include "wave.h"
@@ -77,6 +78,37 @@ static int snapshot(void)
     return ok ? 0 : 1;
 }
 
+static int gif_colour(char c) { return c == '=' ? 2 : 3; }
+
+/* Scripted run: a wave packet hits the barrier and splits into reflected and transmitted parts. */
+static int gif_demo(const char *path)
+{
+    Wave w;
+    if (wave_init(&w, GRID, -195.0, DX, 0.05)) return 1;
+    wave_gaussian(&w, START, SIGMA, K0);
+    wave_set_barrier(&w, 0.0, 2.0, 0.6);
+    unsigned char pal[GIF_COLOURS][3] = {{8, 10, 24}, {235, 235, 235}, {255, 205, 60}, {90, 210, 255}};
+    const int scale = 3, cw = RENDER_COLS * 6 * scale, ch = RENDER_ROWS * 9 * scale;
+    static unsigned char px[RENDER_COLS * 6 * 3 * RENDER_ROWS * 9 * 3];
+    static char buf[RENDER_COLS * RENDER_ROWS * 4];
+    Gif *g = gif_open(path, cw, ch, pal, 6);
+    if (!g) return 1;
+    enum { STEPS = 3300, EVERY = 33 };
+    for (int k = 0; k <= STEPS; k++) {
+        if (k % EVERY == 0) {
+            render_frame(&w, 0.05, buf, sizeof buf);
+            gif_draw_text(px, cw, ch, buf, scale, gif_colour);
+            if (gif_frame(g, px, k == STEPS ? 250 : 0)) return 1;
+        }
+        wave_step(&w);
+    }
+    double right = wave_prob_right(&w, 0.0);
+    wave_free(&w);
+    if (gif_close(g)) return 1;
+    printf("probability transmitted: %.3f\n", right);
+    return 0;
+}
+
 static struct termios saved;
 static void restore(void) { tcsetattr(STDIN_FILENO, TCSANOW, &saved); fputs("\033[?25h", stdout); }
 
@@ -137,5 +169,6 @@ int main(int argc, char **argv)
 {
     if (argc > 1 && strcmp(argv[1], "--headless") == 0) return headless(argc > 2 ? argv[2] : ".");
     if (argc > 1 && strcmp(argv[1], "--snapshot") == 0) return snapshot();
+    if (argc > 1 && strcmp(argv[1], "--gif") == 0) return gif_demo(argc > 2 ? argv[2] : "demo.gif");
     return play();
 }
