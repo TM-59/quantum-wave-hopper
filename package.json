@@ -1,0 +1,6 @@
+{
+  "name": "quantum-wave-hopper-checks",
+  "private": true,
+  "scripts": {"smoke": "node scripts/smoke.cjs"},
+  "devDependencies": {"playwright": "1.63.0"}
+}

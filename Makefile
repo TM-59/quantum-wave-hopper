@@ -2,8 +2,11 @@ CC      ?= cc
 CFLAGS  ?= -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror
 LDLIBS  += -lm
 SRC     := src/wave.c src/svg.c src/render.c src/gif.c
+EMCC    ?= emcc
+PYTHON  ?= python3
+PORT    ?= 4216
 
-.PHONY: all test plots clean
+.PHONY: all test bench web play smoke plots clean
 all: quantum-wave-hopper
 
 quantum-wave-hopper: $(SRC) src/main.c
@@ -15,9 +18,36 @@ test_wave: $(SRC) tests/test_wave.c
 test_gif: src/gif.c tests/test_gif.c
 	$(CC) $(CFLAGS) -o $@ $^ $(LDLIBS)
 
-test: test_wave test_gif
+test_observer: src/wave.c src/observer.c tests/test_observer.c src/wave.h src/observer.h
+	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^) $(LDLIBS)
+
+test: test_wave test_gif test_observer
 	./test_wave
 	./test_gif
+	./test_observer
+
+bench: test_observer
+	./test_observer
+	@mkdir -p build
+	./test_observer --trace > build/native-trace.csv
+
+web: dist/physics.mjs
+	cp web/index.html web/style.css web/app.mjs dist/
+	mkdir -p dist/art
+	cp assets/art/* dist/art/
+	$(PYTHON) scripts/check-size.py
+
+dist/physics.mjs: src/wave.c src/observer.c src/wave.h src/observer.h
+	mkdir -p dist
+	$(EMCC) $(CFLAGS) src/wave.c src/observer.c -lm --no-entry -o $@ \
+	  -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sFILESYSTEM=0 -sALLOW_MEMORY_GROWTH=1 \
+	  -sEXPORTED_FUNCTIONS=_qw_reset,_qw_controls,_qw_launch,_qw_step,_qw_value,_qw_density,_qw_real,_qw_half_height
+
+play: web
+	$(PYTHON) -m http.server $(PORT) --bind 127.0.0.1 --directory dist
+
+smoke: web bench quantum-wave-hopper
+	node scripts/smoke.cjs
 
 # Regenerates the CSV and the SVG charts shown in the README.
 plots: quantum-wave-hopper
@@ -27,4 +57,5 @@ plots: quantum-wave-hopper
 	head -c6 docs/demo.gif | grep -q GIF89a
 
 clean:
-	rm -f quantum-wave-hopper test_wave test_gif
+	rm -f quantum-wave-hopper test_wave test_gif test_observer
+	rm -rf build dist

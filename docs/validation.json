@@ -1,0 +1,35 @@
+{
+  "checks": 29,
+  "seconds": 15.794506538,
+  "equivalence": {
+    "rows": 102,
+    "columns": 25,
+    "maxError": 6.235012506294879e-13,
+    "tolerance": 1e-9
+  },
+  "errors": 0,
+  "externalRequests": 0,
+  "standard": {
+    "pRight": 0.3501256309855187,
+    "theory": 0.35097436725504877,
+    "norm": 1.0000000000005038,
+    "time": 165
+  },
+  "half": {
+    "height": 0.5003823401283176,
+    "pRight": 0.4988974011302684,
+    "theory": 0.5000000000000002
+  },
+  "low": {
+    "height": 0.3,
+    "pRight": 0.8269939020498953
+  },
+  "screenshots": [
+    "before-terminal.jpg",
+    "half-through.jpg",
+    "mobile.jpg",
+    "observatory.jpg",
+    "split-complete.jpg",
+    "splitting.jpg"
+  ]
+}
