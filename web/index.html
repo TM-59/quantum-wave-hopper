@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#151a33">
+  <title>Quantum Wave Hopper — a tunnelling observatory</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <a class="brand" href="./" aria-label="Quantum Wave Hopper home"><span class="brandmark" aria-hidden="true">ψ</span> QUANTUM <strong>WAVE HOPPER</strong></a>
+  <span class="eyebrow">A TUNNELLING OBSERVATORY</span>
+  <a class="about-link" href="#field-notes">How it works <span aria-hidden="true">↘</span></a>
+</header>
+<main>
+  <section class="intro">
+    <div><p class="eyebrow">01 / THE BARRIER</p><h1>Send a wave.<br><em>Let half of it through.</em></h1></div>
+    <div class="guide">
+      <img id="guide-portrait" src="art/hopper-sprite.png" alt="Hop, the observatory's small robot guide" width="96" height="96">
+      <p><strong>Hop</strong> keeps the observatory. A wave packet cannot be split by hand — only by the barrier you build. Tune its place and height, then launch.</p>
+    </div>
+  </section>
+  <div class="layout">
+    <section class="panel" aria-label="Wave observation">
+      <div class="view-heading"><span><i class="live-dot" aria-hidden="true"></i> <span id="mode-name">MANUAL BARRIER</span></span><span id="clock">t = 0.0</span></div>
+      <div class="scene">
+        <canvas id="scene" width="1080" height="470" role="img" aria-label="Probability density of the wave packet against position, with the barrier drawn as a band."></canvas>
+        <div class="scene-label"><span id="status" role="status">Loading the wave solver…</span><small>Painted backdrop is decoration · curves are the computed density</small></div>
+        <div id="goal" hidden>Half through — within ±2 %</div>
+      </div>
+      <div class="legend" aria-label="Legend">
+        <span><i class="key reflected"></i> reflected |ψ|² (x &lt; barrier)</span>
+        <span><i class="key transmitted"></i> transmitted |ψ|² (x &gt; barrier)</span>
+        <span><i class="key real"></i> Re ψ</span>
+        <span><i class="key barrier"></i> barrier V (right axis)</span>
+        <span><i class="key energy"></i> mean energy ⟨E⟩</span>
+      </div>
+      <div class="telemetry" aria-label="Measured probabilities">
+        <div><span>TRANSMITTED</span><strong id="tr">—</strong><small>%</small></div>
+        <div><span>REFLECTED</span><strong id="re">—</strong><small>%</small></div>
+        <div><span>THEORY T</span><strong id="th">—</strong><small>%</small></div>
+        <div><span>NORM ∫|ψ|²</span><strong id="norm">—</strong><small>1</small></div>
+      </div>
+    </section>
+    <aside class="control-panel" aria-label="Barrier controls">
+      <p class="eyebrow">YOUR BARRIER</p><h2>Place it.<br>Raise it.</h2>
+      <label for="height">Barrier height V <output id="height-value" for="height">0.60</output></label>
+      <input id="height" type="range" min="0" max="1.5" step="0.05" value="0.6">
+      <div class="range-ends"><span>0</span><span>packet ⟨E⟩ ≈ 0.50</span><span>1.5</span></div>
+      <div class="adjust"><button data-height="-0.05" aria-label="Lower the barrier">− <kbd>S</kbd></button><button data-height="0.05" aria-label="Raise the barrier">+ <kbd>W</kbd></button></div>
+      <label for="left">Barrier position x <output id="left-value" for="left">0</output></label>
+      <input id="left" type="range" min="-40" max="60" step="2" value="0">
+      <div class="range-ends"><span>−40</span><span><kbd>A</kbd> / <kbd>D</kbd></span><span>60</span></div>
+      <p class="control-note">Width is fixed at 2. Units: ħ = m = 1. Moving the barrier after the packet has passed changes nothing that already happened.</p>
+      <button id="launch" class="primary" disabled>Launch the packet <span aria-hidden="true">→</span></button>
+      <div class="secondary-actions"><button id="pause" disabled>Pause</button><span><kbd>Space</kbd> launch · <kbd>P</kbd> pause</span></div>
+      <div class="experiment"><p class="eyebrow">OR WATCH AN EXPERIMENT</p>
+        <button id="standard" disabled>Standard barrier V = 0.6 <span aria-hidden="true">→</span></button>
+        <button id="half" disabled>Exactly half (theory) <span aria-hidden="true">→</span></button>
+        <p id="experiment-note">Your barrier, your packet. Launch it and read the split on the right of the barrier.</p></div>
+    </aside>
+  </div>
+  <section class="analysis" aria-label="Transmission over time">
+    <div class="chart-panel"><div class="chart-heading"><h2>How much has tunnelled</h2><span><i class="line-key"></i> P(x &gt; barrier) · <i class="dash-key"></i> theory T</span></div>
+      <canvas id="plot" width="1080" height="230" role="img" aria-label="Transmitted probability in percent against time"></canvas>
+      <p id="plot-note">Time in units of ħ/E · the dashed line is the exact barrier formula averaged over the packet's momenta</p></div>
+  </section>
+  <section id="field-notes" class="field-notes"><p class="eyebrow">FIELD NOTES</p>
+    <div><h2>Below the top, still through.</h2><p>The packet's mean energy (0.50) is below a barrier of 0.6, yet about a third of it comes out on the far side. Raise the barrier and the transmitted share falls quickly; lower it and most of the packet passes.</p></div>
+    <div><h3>The same solver as the terminal game</h3><p>Crank–Nicolson on 3,900 points (Δx = 0.1, Δt = 0.05), solved in C and compiled to WebAssembly. JavaScript only draws and reads inputs. The painting and Hop are illustrations: Hop rests on the highest point of the density, which is not a measured particle position.</p></div>
+  </section>
+</main>
+<footer><span>QUANTUM WAVE HOPPER <span class="muted">/ C11 Schrödinger solver</span></span><span>Probability is conserved. Patience is optional.</span></footer>
+<noscript>This observatory needs JavaScript and WebAssembly. The terminal version remains available from the repository.</noscript>
+<script type="module" src="app.mjs"></script>
+</body>
+</html>

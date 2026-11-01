@@ -5,6 +5,21 @@ Steer a quantum wave packet at a potential barrier and tune how much tunnels thr
 
 ![demo](docs/demo.gif)
 
+## Browser observatory
+
+The same C solver, compiled to WebAssembly, drives a browser view: place and raise the barrier, launch the packet and read how the probability splits. Reflected density is orange, transmitted density is blue (colour-blind-safe Okabe–Ito pair), the barrier is read on the right-hand `V` axis and the packet's mean energy ⟨E⟩ is the dashed line. Two locked experiments show the standard barrier (V = 0.6) and the height for which the exact formula gives exactly half.
+
+| Terminal (before) | Browser observatory (after) |
+|---|---|
+| ![terminal](docs/images/before-terminal.jpg) | ![observatory](docs/images/observatory.jpg) |
+
+![splitting](docs/images/splitting.jpg)
+![split complete](docs/images/split-complete.jpg)
+![half through](docs/images/half-through.jpg)
+![mobile](docs/images/mobile.jpg)
+
+The painted backdrop and Hop, the observatory's small robot guide, are original illustrations generated locally (see [docs/art-direction.md](docs/art-direction.md)). Hop rests on the highest point of the computed density; that is decoration, not a measured particle position.
+
 ## Run
 
 ```sh
@@ -13,6 +28,8 @@ make && ./quantum-wave-hopper          # interactive
 ./quantum-wave-hopper --gif docs/demo.gif  # scripted tunnelling run as an animated GIF
 make test && make plots                # unit tests and docs/*.svg
 docker build -t quantum-wave-hopper .  # same, reproducibly
+make web && make play                  # browser observatory at http://localhost:4216 (needs emcc)
+make smoke                             # native/WASM comparison, real controls, screenshots (needs Playwright)
 ```
 
 Keys: `space` relaunch the packet, `a`/`d` move the barrier, `w`/`s` change its height, `p` pause, `q` quit. Goal: let exactly half of the packet through.
@@ -37,6 +54,8 @@ A packet (σ = 10, k₀ = 1) hits a barrier of height 0.6 and width 2. Simulated
 ## Tests
 
 `tests/test_wave.c` checks: norm conservation (1e-10), free packet motion, spreading `σ√(1+(t/2σ²)²)` and energy, harmonic-oscillator ground state stays stationary, barrier formula limits and resonance, simulated tunnelling vs theory (5 %), renderer bounds.
+
+`tests/test_observer.c` checks that the browser adapter evolves exactly the same ψ as the Wave API, conserves the norm, matches the packet-averaged theory within 1 % for V = 0.6, and that the "exactly half" height (bisection on the exact formula, V ≈ 0.5004) transmits 0.4989 in the solver. `scripts/smoke.cjs` compares WASM with the native trace (results in `docs/validation.json`).
 
 ## Roadmap
 
