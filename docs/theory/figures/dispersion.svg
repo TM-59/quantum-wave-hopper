@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="720" height="400" font-family="sans-serif" font-size="12">
+<rect width="720" height="400" fill="#ffffff"/>
+<text x="70" y="26" font-size="16" font-weight="bold" fill="#222">Group velocity on the grid, relative to the continuum value k</text>
+<line x1="70.0" y1="44" x2="70.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="344.0" x2="700" y2="344.0" stroke="#e3e3e3"/>
+<text x="70.0" y="362" text-anchor="middle" fill="#444">0.25</text>
+<text x="62" y="348.0" text-anchor="end" fill="#444">0.934</text>
+<line x1="196.0" y1="44" x2="196.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="284.0" x2="700" y2="284.0" stroke="#e3e3e3"/>
+<text x="196.0" y="362" text-anchor="middle" fill="#444">1</text>
+<text x="62" y="288.0" text-anchor="end" fill="#444">0.948</text>
+<line x1="322.0" y1="44" x2="322.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="224.0" x2="700" y2="224.0" stroke="#e3e3e3"/>
+<text x="322.0" y="362" text-anchor="middle" fill="#444">1.75</text>
+<text x="62" y="228.0" text-anchor="end" fill="#444">0.962</text>
+<line x1="448.0" y1="44" x2="448.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="164.0" x2="700" y2="164.0" stroke="#e3e3e3"/>
+<text x="448.0" y="362" text-anchor="middle" fill="#444">2.5</text>
+<text x="62" y="168.0" text-anchor="end" fill="#444">0.975</text>
+<line x1="574.0" y1="44" x2="574.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="104.0" x2="700" y2="104.0" stroke="#e3e3e3"/>
+<text x="574.0" y="362" text-anchor="middle" fill="#444">3.25</text>
+<text x="62" y="108.0" text-anchor="end" fill="#444">0.989</text>
+<line x1="700.0" y1="44" x2="700.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="44.0" x2="700" y2="44.0" stroke="#e3e3e3"/>
+<text x="700.0" y="362" text-anchor="middle" fill="#444">4</text>
+<text x="62" y="48.0" text-anchor="end" fill="#444">1</text>
+<rect x="70" y="44" width="630" height="300" fill="none" stroke="#888"/>
+<text x="385" y="388" text-anchor="middle" fill="#222">k0</text>
+<text transform="translate(16 194) rotate(-90)" text-anchor="middle" fill="#222">speed / k0</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="70.0,58.1 112.0,59.5 154.0,62.0 196.0,65.6 238.0,70.6 280.0,77.3 322.0,86.1 364.0,97.2 406.0,111.2 448.0,128.5 490.0,149.5 532.0,175.0 574.0,205.3 616.0,240.9 658.0,282.5 700.0,330.4 "/>
+<rect x="78" y="52" width="12" height="12" fill="#1f77b4"/><text x="96" y="63" fill="#222">measured / k</text>
+<polyline fill="none" stroke="#d62728" stroke-width="2" points="70.0,58.1 112.0,59.5 154.0,61.9 196.0,65.5 238.0,70.5 280.0,77.2 322.0,86.0 364.0,97.1 406.0,111.0 448.0,128.3 490.0,149.4 532.0,174.8 574.0,205.0 616.0,240.7 658.0,282.2 700.0,330.1 "/>
+<rect x="228" y="52" width="12" height="12" fill="#d62728"/><text x="246" y="63" fill="#222">scheme / k</text>
+<polyline fill="none" stroke="#888888" stroke-width="2" points="70.0,57.6 112.0,57.6 154.0,57.6 196.0,57.6 238.0,57.6 280.0,57.6 322.0,57.6 364.0,57.6 406.0,57.6 448.0,57.6 490.0,57.6 532.0,57.6 574.0,57.6 616.0,57.6 658.0,57.6 700.0,57.6 "/>
+<rect x="378" y="52" width="12" height="12" fill="#888888"/><text x="396" y="63" fill="#222">continuum</text>
+</svg>
