@@ -7,3 +7,4 @@ dist/
 node_modules/
 .env
 __pycache__/
+theory_figs

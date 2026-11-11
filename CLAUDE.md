@@ -10,6 +10,9 @@ C11 + libm の 1 次元時間依存シュレーディンガー方程式ソルバ
 - 検証は `make test`(解析解・保存則の照合 + adapter)/ `make bench`(native trace)/ `make plots` / `make web` / `make smoke`。
   native の cc が無い端末では、gcc の入ったコンテナで `make -j4 test bench quantum-wave-hopper` を実行して native を作り、
   Emscripten を有効にして `make web && node scripts/smoke.cjs` を手元で回す。
+- 理論の手引きは `docs/theory/`。`make theory-figs` が図と実測値の表を `tests/theory_figs.c` から再生成し、`make theory-check` が
+  対応表(文 → 頁 → 図 → 関数 → テスト)の欠け・リンク切れ・消えた関数名・未掲載の公開関数で落ちる。法則・規則を足したら同じ PR で頁と図と表を足す。
+  README の「14 statements」は表の行数と合わせる。
 - CI は PR の軽量ゲート(docker build で `make test && make plots`)のみ。WASM ビルド・撮影・E2E はローカル専用。
 - 公開 repo。コミット・PR に生成 AI の署名、私的な情報を入れない(公開前に private 情報の検査と差分の目視を行う)。
 - 実画面は `docs/images/`(`make smoke` が撮る)、原画と生成指示・採否は `assets/art/` と `docs/art-direction.md`。

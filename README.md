@@ -5,6 +5,10 @@ Steer a quantum wave packet at a potential barrier and tune how much tunnels thr
 
 ![demo](docs/demo.gif)
 
+**Theory handbook**: [docs/theory/](docs/theory/README.md) — 14 statements (the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission and tunnelling, the Crank–Nicolson scheme and its unitarity, the tridiagonal solve, accuracy, the hard walls, the program's rules), each with its equation, assumptions, derivation, code, tests and a figure. `make theory-figs` regenerates the figures and the measured values; `make theory-check` checks the coverage table.
+
+(理論の手引き: 式・前提・導出・実装箇所・検査を、全項目に図つきで説明します。)
+
 ## Browser observatory
 
 The same C solver, compiled to WebAssembly, drives a browser view: place and raise the barrier, launch the packet and read how the probability splits. Reflected density is orange, transmitted density is blue (colour-blind-safe Okabe–Ito pair), the barrier is read on the right-hand `V` axis and the packet's mean energy ⟨E⟩ is the dashed line. Two locked experiments show the standard barrier (V = 0.6) and the height for which the exact formula gives exactly half.

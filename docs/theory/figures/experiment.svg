@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="720" height="400" font-family="sans-serif" font-size="12">
+<rect width="720" height="400" fill="#ffffff"/>
+<text x="70" y="26" font-size="16" font-weight="bold" fill="#222">Transmitted probability against barrier height (k0 = 1, width 2)</text>
+<line x1="70.0" y1="44" x2="70.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="344.0" x2="700" y2="344.0" stroke="#e3e3e3"/>
+<text x="70.0" y="362" text-anchor="middle" fill="#444">0</text>
+<text x="62" y="348.0" text-anchor="end" fill="#444">-0.037</text>
+<line x1="196.0" y1="44" x2="196.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="284.0" x2="700" y2="284.0" stroke="#e3e3e3"/>
+<text x="196.0" y="362" text-anchor="middle" fill="#444">0.3</text>
+<text x="62" y="288.0" text-anchor="end" fill="#444">0.18</text>
+<line x1="322.0" y1="44" x2="322.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="224.0" x2="700" y2="224.0" stroke="#e3e3e3"/>
+<text x="322.0" y="362" text-anchor="middle" fill="#444">0.6</text>
+<text x="62" y="228.0" text-anchor="end" fill="#444">0.398</text>
+<line x1="448.0" y1="44" x2="448.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="164.0" x2="700" y2="164.0" stroke="#e3e3e3"/>
+<text x="448.0" y="362" text-anchor="middle" fill="#444">0.9</text>
+<text x="62" y="168.0" text-anchor="end" fill="#444">0.615</text>
+<line x1="574.0" y1="44" x2="574.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="104.0" x2="700" y2="104.0" stroke="#e3e3e3"/>
+<text x="574.0" y="362" text-anchor="middle" fill="#444">1.2</text>
+<text x="62" y="108.0" text-anchor="end" fill="#444">0.832</text>
+<line x1="700.0" y1="44" x2="700.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="44.0" x2="700" y2="44.0" stroke="#e3e3e3"/>
+<text x="700.0" y="362" text-anchor="middle" fill="#444">1.5</text>
+<text x="62" y="48.0" text-anchor="end" fill="#444">1.05</text>
+<rect x="70" y="44" width="630" height="300" fill="none" stroke="#888"/>
+<text x="385" y="388" text-anchor="middle" fill="#222">barrier height V</text>
+<text transform="translate(16 194) rotate(-90)" text-anchor="middle" fill="#222">T</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="70.0,57.6 112.0,61.0 154.0,75.4 196.0,105.4 238.0,148.7 280.0,195.8 322.0,237.1 364.0,268.3 406.0,290.0 448.0,304.4 490.0,313.9 532.0,320.1 574.0,324.3 616.0,327.1 658.0,329.0 700.0,330.3 "/>
+<rect x="78" y="52" width="12" height="12" fill="#1f77b4"/><text x="96" y="63" fill="#222">simulated packet</text>
+<polyline fill="none" stroke="#d62728" stroke-width="2" points="70.0,57.6 112.0,61.0 154.0,75.3 196.0,105.2 238.0,148.4 280.0,195.5 322.0,236.9 364.0,268.2 406.0,289.9 448.0,304.4 490.0,313.9 532.0,320.2 574.0,324.3 616.0,327.1 658.0,329.0 700.0,330.3 "/>
+<rect x="228" y="52" width="12" height="12" fill="#d62728"/><text x="246" y="63" fill="#222">packet formula</text>
+<polyline fill="none" stroke="#888888" stroke-width="2" points="70.0,57.6 112.0,60.9 154.0,74.9 196.0,104.5 238.0,148.0 280.0,195.7 322.0,237.5 364.0,268.9 406.0,290.6 448.0,304.9 490.0,314.3 532.0,320.4 574.0,324.5 616.0,327.2 658.0,329.1 700.0,330.4 "/>
+<rect x="378" y="52" width="12" height="12" fill="#888888"/><text x="396" y="63" fill="#222">plane wave k = 1</text>
+</svg>

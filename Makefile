@@ -6,7 +6,7 @@ EMCC    ?= emcc
 PYTHON  ?= python3
 PORT    ?= 4216
 
-.PHONY: all test bench web play smoke plots clean
+.PHONY: all test bench web play smoke plots clean theory-figs theory-check
 all: quantum-wave-hopper
 
 quantum-wave-hopper: $(SRC) src/main.c
@@ -56,6 +56,18 @@ plots: quantum-wave-hopper
 	./quantum-wave-hopper --gif docs/demo.gif
 	head -c6 docs/demo.gif | grep -q GIF89a
 
+# Regenerates the plotted figures and the measured-values table of docs/theory (one command).
+theory_figs: src/wave.c src/observer.c src/svg.c tests/theory_figs.c src/wave.h src/observer.h src/svg.h
+	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^) $(LDLIBS)
+
+theory-figs: theory_figs
+	mkdir -p docs/theory/figures
+	./theory_figs docs/theory/figures
+
+# Fails when a statement of docs/theory has no figure, a link is broken, or a referenced function or test is gone.
+theory-check:
+	python3 scripts/theory-check.py
+
 clean:
-	rm -f quantum-wave-hopper test_wave test_gif test_observer
+	rm -f quantum-wave-hopper test_wave test_gif test_observer theory_figs
 	rm -rf build dist
