@@ -128,7 +128,33 @@ async function run() {
   for (const el of await mobile.locator('button').all()) {
     const rect = await el.boundingBox(); check(rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
   }
-  await mobile.evaluate(() => scrollTo(0, 0)); await capture(mobile, 'mobile'); await mobileContext.close();
+  // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
+  const sizes = () => {
+    const out = {dom: 99, where: '', canvas: 99};
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let node; (node = walker.nextNode());) {
+      if (!node.textContent.trim()) continue;
+      const el = node.parentElement, style = getComputedStyle(el), box = el.getBoundingClientRect();
+      if (style.display === 'none' || style.visibility === 'hidden' || !box.width || !box.height || el.closest('[hidden]')) continue;
+      const px = parseFloat(style.fontSize);
+      if (px < out.dom) { out.dom = px; out.where = el.className || el.id || el.tagName; }
+    }
+    for (const row of window.__tmGate.texts()) out.canvas = Math.min(out.canvas, row.px);
+    return out;
+  };
+  let size = await mobile.evaluate(sizes);
+  check(size.dom >= 14, `390x844: smallest DOM text ${size.dom}px (${size.where})`);
+  check(size.canvas >= 14, `390x844: smallest canvas text ${size.canvas}px`);
+  check(await mobile.evaluate(() => window.__tmGate.goal()), 'the hook reports the launch');
+  await mobile.evaluate(() => scrollTo(0, 0)); await capture(mobile, 'mobile');
+  await mobile.setViewportSize({width: 844, height: 390}); await mobile.clock.runFor(100);
+  size = await mobile.evaluate(sizes);
+  check(size.dom >= 14 && size.canvas >= 14, `844x390: smallest text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
+  check(await mobile.locator('body').evaluate(el => el.scrollWidth <= innerWidth), '844x390 has no overflow');
+  for (const el of await mobile.locator('button').all()) {
+    const rect = await el.boundingBox(); check(rect.width >= 44 && rect.height >= 44, 'landscape buttons have 44px touch target');
+  }
+  await mobileContext.close();
 
   // Missing art must not block the physics.
   const fallback = await context.newPage(); track(fallback);
