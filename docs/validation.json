@@ -1,6 +1,6 @@
 {
-  "checks": 29,
-  "seconds": 15.794506538,
+  "checks": 40,
+  "seconds": 23.44757012,
   "equivalence": {
     "rows": 102,
     "columns": 25,
@@ -22,7 +22,7 @@
   },
   "low": {
     "height": 0.3,
-    "pRight": 0.8269939020498953
+    "pRight": 0.8269939020498946
   },
   "screenshots": [
     "before-terminal.jpg",

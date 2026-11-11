@@ -36,6 +36,7 @@ function reset(mode = 0, run = false) {
   render();
 }
 function launch() {
+  launched = true;
   if (!engine) return;
   if (state.mode !== 0) engine._qw_reset(0); else engine._qw_launch();
   pull(); samples = [{time: 0, pRight: state.pRight}]; paused = false; accumulator = 0; render();
@@ -74,6 +75,10 @@ const stop = () => { paused = true; accumulator = 0; if (engine) render(); };
 document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); });
 window.addEventListener('blur', stop);
 
+// On a phone (narrow, short or touch-first screen) every canvas label is at least 14 CSS px.
+const phone = matchMedia('(max-width:720px),(max-height:500px),(pointer:coarse)');
+const textPx = desktop => phone.matches ? Math.max(14, desktop) : desktop;
+let canvasTexts = [], launched = false;
 function canvasSize(canvas) {
   const bounds = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
   const w = Math.round(bounds.width * dpr), h = Math.round(bounds.height * dpr);
@@ -101,13 +106,14 @@ function drawScene() {
   const Yd = d => base - Math.min(d / DENSITY_MAX, 1) * (base - top);
   const Yv = v => base - Math.min(v / V_MAX, 1) * (base - top);
   // Axes and units.
-  ctx.font = '10px system-ui'; ctx.lineWidth = 1;
+  const axis = textPx(10); canvasTexts = [{text: 'axis labels', px: axis}];
+  ctx.font = `${axis}px system-ui`; ctx.lineWidth = 1;
   ctx.strokeStyle = '#ffffff40'; ctx.beginPath(); ctx.moveTo(left, base); ctx.lineTo(w - right, base); ctx.stroke();
   ctx.fillStyle = '#c9cfe3'; ctx.textAlign = 'center';
-  for (let x = -150; x <= 150; x += 50) { ctx.fillText(String(x), X(x), base + 15); }
-  ctx.textAlign = 'right'; ctx.fillText('position x (ħ = m = 1)', w - right, base + 30);
-  ctx.textAlign = 'left'; ctx.fillText('|ψ|²', 8, top - 6); ctx.fillText(DENSITY_MAX.toFixed(2), 8, top + 4); ctx.fillText('0', 8, base + 3);
-  ctx.textAlign = 'right'; ctx.fillText('V', w - 8, top - 6); ctx.fillText(V_MAX.toFixed(1), w - 8, top + 4);
+  for (let x = -150; x <= 150; x += 50) { ctx.fillText(String(x), X(x), base + axis + 5); }
+  ctx.textAlign = 'right'; ctx.fillText('position x (ħ = m = 1)', w - right, base + 2 * axis + 10);
+  ctx.textAlign = 'left'; ctx.fillText('|ψ|²', 8, top - axis - 2); ctx.fillText(DENSITY_MAX.toFixed(2), 8, top + 4); ctx.fillText('0', 8, base + 3);
+  ctx.textAlign = 'right'; ctx.fillText('V', w - 8, top - axis - 2); ctx.fillText(V_MAX.toFixed(1), w - 8, top + 4);
   // Barrier and the packet's mean energy on the potential axis.
   const bx0 = X(state.left), bx1 = X(state.left + state.width);
   ctx.fillStyle = '#f0e4c8d0'; ctx.fillRect(bx0, Yv(state.height), Math.max(bx1 - bx0, 3), base - Yv(state.height));
@@ -147,16 +153,17 @@ function drawScene() {
   }
 }
 function drawPlot() {
-  const {ctx, w, h} = canvasSize(plot), left = 44, right = 14, top = 20, bottom = 30, tMax = 165;
+  const {ctx, w, h} = canvasSize(plot), small = textPx(9), left = 44, right = 14, top = small + 11, bottom = small + 21, tMax = 165;
+  canvasTexts = canvasTexts.filter(row => row.text !== 'chart labels').concat({text: 'chart labels', px: small});
   const X = t => left + t / tMax * (w - left - right), Y = p => top + (1 - p) * (h - top - bottom);
-  ctx.clearRect(0, 0, w, h); ctx.font = '9px system-ui'; ctx.lineWidth = 1;
+  ctx.clearRect(0, 0, w, h); ctx.font = `${small}px system-ui`; ctx.lineWidth = 1;
   ctx.textAlign = 'right';
   for (const p of [0, 0.25, 0.5, 0.75, 1]) {
     ctx.strokeStyle = p === 0.5 ? '#e69f0080' : '#2f3866'; ctx.beginPath(); ctx.moveTo(left, Y(p)); ctx.lineTo(w - right, Y(p)); ctx.stroke();
     ctx.fillStyle = '#aab3c9'; ctx.fillText(`${p * 100}`, left - 8, Y(p) + 3);
   }
   ctx.textAlign = 'center';
-  for (let t = 0; t <= tMax; t += 30) ctx.fillText(String(t), X(t), h - bottom + 14);
+  for (let t = 0; t <= tMax; t += 30) ctx.fillText(String(t), X(t), h - bottom + small + 4);
   ctx.textAlign = 'left'; ctx.fillText('P [%]', 4, top - 7); ctx.textAlign = 'right'; ctx.fillText('time t [ħ/E units]', w - right, h - 2);
   ctx.strokeStyle = '#f0e4c8'; ctx.setLineDash([6, 5]); ctx.beginPath(); ctx.moveTo(left, Y(state.theory)); ctx.lineTo(w - right, Y(state.theory)); ctx.stroke(); ctx.setLineDash([]);
   ctx.strokeStyle = '#56b4e9'; ctx.lineWidth = 2; ctx.beginPath();
@@ -196,6 +203,20 @@ function frame(timestamp) {
   }
   requestAnimationFrame(frame);
 }
+// Read-only hook for the phone playability check: canvas text sizes in CSS px, the first goal, the next tap.
+const fromScene = el => { const c = scene.getBoundingClientRect(), r = el.getBoundingClientRect(); return {x: r.left + r.width / 2 - c.left, y: r.top + r.height / 2 - c.top}; };
+window.__tmGate = {
+  version: 1,
+  get logical() { const r = scene.getBoundingClientRect(); return {w: r.width || 1, h: r.height || 1}; },
+  scene: () => !engine ? 'loading' : paused ? 'paused' : 'play',
+  goal: () => launched && Boolean(state) && state.time > 0,
+  objective: () => $('launch').textContent,
+  texts: () => canvasTexts.map(row => ({...row})),
+  targets: () => [],
+  player: () => null,
+  hint: () => !engine || launched ? null : fromScene($('launch')),
+};
+phone.addEventListener('change', () => { if (engine) render(); });
 for (const img of [backdrop, hopper]) img.onload = () => { if (engine) render(); };
 new ResizeObserver(() => { if (engine) render(); }).observe(scene);
 $('height').disabled = $('left').disabled = true;
