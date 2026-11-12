@@ -11,6 +11,7 @@ Why the program is correct, from the repository alone: every law, formula and nu
 1. [The physics: a wave packet meets a barrier](01-quantum-mechanics.md) — the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission, the packet experiment
 2. [The numerical scheme: Crank–Nicolson](02-crank-nicolson.md) — unitarity, the tridiagonal solve, second-order accuracy, stationary states, the hard walls
 3. [The program: the experiment on screen](03-program.md) — the standard experiment, the half-through demonstration, from the wave function to the picture
+4. [The story: The Far Side](04-story.md) — the share the story may not change, shots and seals, battery and hours, scenes and choices, the bench
 
 ## How the pieces depend on each other
 
@@ -34,6 +35,12 @@ flowchart TD
     S06 --> S13["S13 half-through demonstration"]
     S03 --> S13
     S12 --> S14["S14 wave function to picture"]
+    S12 --> S15["S15 the story never changes the share"]
+    S15 --> S16["S16 a shot, a seal and the check"]
+    S16 --> S17["S17 battery and hours"]
+    S16 --> S18["S18 scenes, choices, quiet heavy scenes"]
+    S17 --> S19["S19 the story bench"]
+    S18 --> S19
 ```
 
 ## Coverage: statement → page → figure → code → test
@@ -54,6 +61,11 @@ flowchart TD
 | S12 | The standard experiment; three probabilities | [3](03-program.md) | `figures/demo.svg`, mermaid | `src/observer.c#qw_reset`, `src/observer.c#qw_controls`, `src/observer.c#qw_launch`, `src/observer.c#qw_step`, `src/observer.c#qw_value` | `tests/test_observer.c#regions sum to 1` |
 | S13 | The half-through demonstration | [3](03-program.md) | `figures/half.svg` | `src/observer.c#qw_half_height` | `tests/theory_figs.c#half-height` |
 | S14 | From the wave function to the picture | [3](03-program.md) | mermaid | `src/observer.c#qw_density`, `src/observer.c#qw_real`, `src/render.c#render_frame` | `tests/test_observer.c#binned density identical`, `tests/test_wave.c#test_render_fits_the_screen` |
+| S15 | The story never changes the share; the counter draws by Born's rule | [4](04-story.md) | mermaid | `src/farside.c#farside_transmission`, `src/farside.c#farside_init` | `tests/test_farside.c#[physics]` |
+| S16 | A shot, a seal, Agnes's second reading and the check | [4](04-story.md) | mermaid | `src/farside.c#farside_dial`, `src/farside.c#farside_fire`, `src/farside.c#farside_seal`, `src/farside.c#farside_particles`, `src/farside.c#farside_target`, `src/farside.c#farside_tol`, `src/farside.c#farside_second_reading`, `src/farside.c#farside_value` | `tests/test_farside.c#[mech] dusk`, `tests/test_farside.c#[mech] frost`, `tests/test_farside.c#[mech] fall` |
+| S17 | Battery and hours | [4](04-story.md) | mermaid | `src/farside.c#farside_charge`, `src/farside.c#farside_settle` | `tests/test_farside.c#[mech] radio`, `tests/test_farside.c#[mech] letter`, `tests/test_farside.c#[mech] dark` |
+| S18 | Scenes at fixed progress points, two choices, quiet heavy scenes | [4](04-story.md) | mermaid | `src/farside.c#farside_answer`, `src/farside.c#farside_options`, `src/farside.c#farside_heavy`, `src/farside.c#farside_ending`, `src/farside.c#farside_hint` | `tests/test_farside.c#[order]`, `tests/test_farside.c#[quiet] letter`, `tests/test_farside.c#[choice]` |
+| S19 | The story bench: each scene's effect, tension, seeds | [4](04-story.md) | mermaid | `tests/story_bench.c#write_all`, `tests/farside_policy.h#op_decide`, `tests/farside_run.h#run_nights` | `tests/story_bench.c#all run seeds distinct`, `tests/test_farside.c#[beat]` |
 
 Tests named `tests/theory_figs.c#…` are measurements recorded in [figures/values.md](figures/values.md) by `make theory-figs`, not assertions of `make test`. S03, S04, S08, S09, S11 and S13 are covered only that way; turning them into assertions is a follow-up.
 
@@ -71,6 +83,6 @@ What the measurements made visible (none of it is changed here):
 
 ## Reading the source against this table
 
-Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
+Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/farside.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
 
-The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages.
+The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages. Page 4 was added with the story layer (`src/farside.c`), which leaves the solver unchanged too.

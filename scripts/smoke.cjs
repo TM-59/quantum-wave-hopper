@@ -54,6 +54,41 @@ async function compareWasm() {
   return {rows: row, columns: rows[0].length - 2, maxError, tolerance: 1e-9};
 }
 
+
+// The story "The Far Side": play five nights through the real controls. The test reads the solver's share per dial step
+// (fw_share) only to choose a setting quickly; the page never shows it.
+async function playStory(page, choices, shots = [], tap = false) {
+  const press = async name => tap ? page.locator(name).tap() : page.locator(name).click();
+  const seen = new Set(), heavySeen = [];
+  for (let guard = 0; guard < 600; guard++) {
+    const s = await snapshot(page);
+    if (s.sceneId) {
+      if (!seen.has(s.sceneId)) {
+        seen.add(s.sceneId);
+        if (shots.includes(s.sceneId)) await capture(page, `story-${s.sceneId === 'dawn' ? (choices.fall ? 'dawn-cells' : 'dawn-whole') : s.sceneId}`);
+        if (['letter', 'fall', 'dark'].includes(s.sceneId)) {
+          heavySeen.push({id: s.sceneId, banner: s.bannerShown, kind: s.fs.banner, cls: await page.locator('#story-scene').getAttribute('class')});
+        }
+      }
+      if (s.sceneId === 'dawn') return {s, seen: [...seen], heavySeen};
+      const option = s.sceneId === 'frost' ? choices.frost : s.sceneId === 'fall' ? choices.fall : 0;
+      const button = page.locator('#story-options button').nth(option);
+      tap ? await button.tap() : await button.click();
+      continue;
+    }
+    if (s.animating) { await page.clock.runFor(400); continue; }
+    const step = await page.evaluate(() => {
+      const {engine} = window.qwView, f = window.qwView.snapshot.fs;
+      let best = 0, gap = 9;
+      for (let k = 0; k <= 30; k++) { const g = Math.abs(engine._fw_share(k) - f.target); if (g < gap) { gap = g; best = k; } }
+      return best;
+    });
+    if (s.fs.dial !== step) { await page.locator('#height').fill(String(+(step * 0.05).toFixed(2))); continue; }
+    if (s.fs.poolN < 2 * s.fs.particles) await press('#launch'); else await press('#seal');
+  }
+  throw new Error('story did not reach dawn');
+}
+
 async function run() {
   const started = performance.now(), equivalence = await compareWasm();
   fs.mkdirSync('docs/images', {recursive: true});
@@ -116,6 +151,40 @@ async function run() {
   await page.getByRole('link', {name: 'How it works'}).click();
   check(page.url().endsWith('#field-notes'), 'field notes link');
 
+
+  // The story: dusk opens on the reading panel; the real keys fire a shot and seal; both endings by the real buttons.
+  await page.evaluate(() => scrollTo(0, 0));
+  await page.goto(origin + '/?seed=5'); await page.waitForFunction(() => window.qwView?.snapshot?.artReady); await page.clock.install();
+  await page.getByRole('button', {name: 'Play The Far Side'}).click();
+  s = await snapshot(page);
+  check(s.story && s.sceneId === 'dusk' && /Odds aren't promises\./.test(s.sceneText), 'the story opens at dusk with Agnes');
+  await capture(page, 'story-dusk');
+  await page.locator('#story-options button').first().click();
+  await page.keyboard.press(' '); s = await snapshot(page);
+  check(s.fs.shots === 1 && s.fs.lastN === 60 && s.animating, `Space fires a shot of 60 particles (${s.fs.lastN})`);
+  await page.clock.runFor(1500); s = await snapshot(page);
+  check(!s.animating && s.done && s.pRight === await page.evaluate(d => window.qwView.engine._fw_share(d), s.fs.dial),
+        'the shot\'s packet ends on the solver\'s own share for that height');
+  check(await page.locator('#tr').textContent() === '—' && await page.locator('#th').textContent() === '—', 'the story hides the solver\'s share');
+  await capture(page, 'story-night');
+  const whole = await playStory(page, {frost: 1, fall: 0}, ['frost', 'radio', 'letter', 'fall', 'dark', 'dawn']);
+  check(whole.seen.join() === 'frost,radio,letter,fall,dark,dawn', `scenes in order ${whole.seen.join()}`);
+  check(/taps it twice and listens/.test(whole.s.sceneText) && whole.s.fs.ending === 0, 'the whole counter reaches Agnes');
+  check(whole.heavySeen.length === 3 && whole.heavySeen.every(h => !h.banner && h.kind === 0 && h.cls === 'heavy'), `heavy scenes are quiet ${JSON.stringify(whole.heavySeen)}`);
+  check(whole.s.heavyLog.every(h => !h.bannerShown), 'no banner on screen when a heavy scene opens');
+  await page.locator('#story-options button').first().click();
+  s = await snapshot(page);
+  check(s.sceneId === 'dusk', 'play again returns to dusk');
+  const cells = await playStory(page, {frost: 0, fall: 1}, ['dawn']);
+  check(/tap the empty case twice/.test(cells.s.sceneText) && cells.s.fs.ending === 1, 'the cells ending');
+  check(cells.seen.join() === 'dusk,frost,radio,letter,fall,dark,dawn', `second play: scenes in order ${cells.seen.join()}`);
+  // Japanese: the same scene in the other language.
+  await page.goto(origin + '/?seed=5&lang=ja'); await page.waitForFunction(() => window.qwView?.snapshot?.artReady); await page.clock.install();
+  await page.locator('#story').click();
+  s = await snapshot(page);
+  check(s.lang === 'ja' && /確率は約束じゃない/.test(s.sceneText), 'Japanese dusk');
+  await capture(page, 'story-ja');
+
   const mobileContext = await browser.newContext({viewport: {width: 390, height: 844}, deviceScaleFactor: 1, isMobile: true, hasTouch: true});
   const mobile = await mobileContext.newPage(); track(mobile); await ready(mobile, origin + '/');
   await mobile.getByRole('button', {name: 'Raise the barrier'}).tap();
@@ -125,7 +194,7 @@ async function run() {
   check((await snapshot(mobile)).time > 30, 'touch launch runs the solver');
   await mobile.getByRole('button', {name: 'Pause'}).tap();
   check(await mobile.locator('body').evaluate(el => el.scrollWidth <= innerWidth), '390px has no overflow');
-  for (const el of await mobile.locator('button').all()) {
+  for (const el of await mobile.locator('button:visible').all()) {
     const rect = await el.boundingBox(); check(rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
   }
   // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
@@ -151,9 +220,29 @@ async function run() {
   size = await mobile.evaluate(sizes);
   check(size.dom >= 14 && size.canvas >= 14, `844x390: smallest text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
   check(await mobile.locator('body').evaluate(el => el.scrollWidth <= innerWidth), '844x390 has no overflow');
-  for (const el of await mobile.locator('button').all()) {
+  for (const el of await mobile.locator('button:visible').all()) {
     const rect = await el.boundingBox(); check(rect.width >= 44 && rect.height >= 44, 'landscape buttons have 44px touch target');
   }
+
+  // The story on a phone: the reading panel and the night's readouts, portrait and landscape.
+  await mobile.setViewportSize({width: 390, height: 844});
+  await mobile.goto(origin + '/?seed=7'); await mobile.waitForFunction(() => window.qwView?.snapshot?.artReady); await mobile.clock.install();
+  await mobile.locator('#story').tap();
+  for (const [w, h] of [[390, 844], [844, 390]]) {
+    await mobile.setViewportSize({width: w, height: h}); await mobile.clock.runFor(100);
+    size = await mobile.evaluate(sizes);
+    check(size.dom >= 14 && size.canvas >= 14, `story ${w}x${h}: smallest text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
+    check(await mobile.locator('body').evaluate(el => el.scrollWidth <= innerWidth), `story ${w}x${h} has no overflow`);
+    for (const el of await mobile.locator('button:visible').all()) {
+      const rect = await el.boundingBox(); check(rect.width >= 44 && rect.height >= 44, `story ${w}x${h} buttons 44px`);
+    }
+  }
+  await mobile.setViewportSize({width: 390, height: 844});
+  await mobile.locator('#story-options button').first().tap();
+  await mobile.locator('#launch').tap(); await mobile.clock.runFor(1500);
+  size = await mobile.evaluate(sizes);
+  check((await snapshot(mobile)).fs.shots === 1 && size.dom >= 14 && size.canvas >= 14, `story night by touch, text ${size.dom}/${size.canvas}px`);
+  await mobile.evaluate(() => scrollTo(0, 0)); await capture(mobile, 'story-mobile');
   await mobileContext.close();
 
   // Missing art must not block the physics.
@@ -169,7 +258,7 @@ async function run() {
   const broken = await context.newPage();
   await broken.route('**/physics.wasm', route => route.fulfill({status: 200, body: ''}));
   await broken.goto(origin + '/'); await broken.getByText('Wave solver unavailable — reload to retry').waitFor();
-  check(await broken.locator('#launch').isDisabled() && await broken.locator('#height').isDisabled(), 'WASM failure disables controls');
+  check(await broken.locator('#launch').isDisabled() && await broken.locator('#height').isDisabled() && await broken.locator('#story').isDisabled(), 'WASM failure disables controls');
   await broken.close();
   check(normalErrors.length === 0, `console/page errors ${normalErrors.join(';')}`);
   check(external.length === 0, 'no external requests');

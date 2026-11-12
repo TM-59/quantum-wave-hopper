@@ -12,7 +12,7 @@
 <header class="topbar">
   <a class="brand" href="./" aria-label="Quantum Wave Hopper home"><span class="brandmark" aria-hidden="true">ψ</span> QUANTUM <strong>WAVE HOPPER</strong></a>
   <span class="eyebrow">A TUNNELLING OBSERVATORY</span>
-  <a class="about-link" href="#field-notes">How it works <span aria-hidden="true">↘</span></a>
+  <span class="top-actions"><button id="lang" type="button" lang="ja" aria-label="Switch the story to Japanese">日本語</button><a class="about-link" href="#field-notes">How it works <span aria-hidden="true">↘</span></a></span>
 </header>
 <main>
   <section class="intro">
@@ -29,6 +29,8 @@
         <canvas id="scene" width="1080" height="470" role="img" aria-label="Probability density of the wave packet against position, with the barrier drawn as a band."></canvas>
         <div class="scene-label"><span id="status" role="status">Loading the wave solver…</span><small>Painted backdrop is decoration · curves are the computed density</small></div>
         <div id="goal" hidden>Half through — within ±2 %</div>
+        <div id="banner" role="status" hidden></div>
+        <section id="story-scene" aria-live="polite" hidden><p class="eyebrow" id="story-night"></p><h2 id="story-title"></h2><div id="story-text"></div><div id="story-options"></div></section>
       </div>
       <div class="legend" aria-label="Legend">
         <span><i class="key reflected"></i> reflected |ψ|² (x &lt; barrier)</span>
@@ -43,6 +45,15 @@
         <div><span>THEORY T</span><strong id="th">—</strong><small>%</small></div>
         <div><span>NORM ∫|ψ|²</span><strong id="norm">—</strong><small>1</small></div>
       </div>
+      <div id="story-data" class="story-data" aria-label="The night's readouts" hidden>
+        <div><span id="l-battery">BATTERY</span><strong id="s-power">—</strong><small id="u-power">shots</small><i class="bar"><b id="power-bar"></b></i></div>
+        <div><span id="l-hours">HOURS</span><strong id="s-hours">—</strong><small id="u-hours">h</small></div>
+        <div><span id="l-failures">FAILURES</span><strong id="s-failures">—</strong></div>
+        <div><span id="l-band">TONIGHT’S BAND</span><strong id="s-band" class="small-strong">—</strong></div>
+        <div><span id="l-last">LAST SHOT</span><strong id="s-last" class="small-strong">—</strong></div>
+        <div><span id="l-pool">AT THIS SETTING</span><strong id="s-pool" class="small-strong">—</strong></div>
+        <p id="s-notes"></p>
+      </div>
     </section>
     <aside class="control-panel" aria-label="Barrier controls">
       <p class="eyebrow">YOUR BARRIER</p><h2>Place it.<br>Raise it.</h2>
@@ -54,16 +65,20 @@
       <input id="left" type="range" min="-40" max="60" step="2" value="0">
       <div class="range-ends"><span>−40</span><span><kbd>A</kbd> / <kbd>D</kbd></span><span>60</span></div>
       <p class="control-note">Width is fixed at 2. Units: ħ = m = 1. Moving the barrier after the packet has passed changes nothing that already happened.</p>
-      <button id="launch" class="primary" disabled>Launch the packet <span aria-hidden="true">→</span></button>
+      <button id="launch" class="primary" disabled><span id="launch-label">Launch the packet</span> <span aria-hidden="true">→</span></button>
+      <button id="seal" class="primary seal" hidden><span id="seal-label">Seal this setting</span> <kbd>E</kbd></button>
       <div class="secondary-actions"><button id="pause" disabled>Pause</button><span><kbd>Space</kbd> launch · <kbd>P</kbd> pause</span></div>
       <div class="experiment"><p class="eyebrow">OR WATCH AN EXPERIMENT</p>
         <button id="standard" disabled>Standard barrier V = 0.6 <span aria-hidden="true">→</span></button>
         <button id="half" disabled>Exactly half (theory) <span aria-hidden="true">→</span></button>
+        <p class="eyebrow" id="story-eyebrow">OR PLAY THE STORY</p>
+        <button id="story" disabled><span id="story-label">Play The Far Side</span> <span aria-hidden="true">→</span></button>
+        <p id="story-note" class="story-note">Five nights on the ridge before the power line is cut.</p>
         <p id="experiment-note">Your barrier, your packet. Launch it and read the split on the right of the barrier.</p></div>
     </aside>
   </div>
   <section class="analysis" aria-label="Transmission over time">
-    <div class="chart-panel"><div class="chart-heading"><h2>How much has tunnelled</h2><span><i class="line-key"></i> P(x &gt; barrier) · <i class="dash-key"></i> theory T</span></div>
+    <div class="chart-panel"><div class="chart-heading"><h2 id="chart-title">How much has tunnelled</h2><span id="chart-key"><i class="line-key"></i> P(x &gt; barrier) · <i class="dash-key"></i> theory T</span></div>
       <canvas id="plot" width="1080" height="230" role="img" aria-label="Transmitted probability in percent against time"></canvas>
       <p id="plot-note">Time in units of ħ/E · the dashed line is the exact barrier formula averaged over the packet's momenta</p></div>
   </section>

@@ -8,3 +8,6 @@ node_modules/
 .env
 __pycache__/
 theory_figs
+test_farside
+story_bench
+.story-check/

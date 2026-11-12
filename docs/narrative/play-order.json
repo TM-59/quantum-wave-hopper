@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "generator": "tests/story_bench.c (make story)",
+  "note": "Scenes open at fixed progress points: dusk before the first night and the seal that ends a night. frost 0 = burn the logbooks, 1 = keep them; fall 0 = keep the counter whole, 1 = its cells into the battery. quiet lists the heavy scenes shown with no 'sealed' banner raised before the next action. Do not edit by hand.",
+  "seeds": [
+    {"seed": "0", "choices": {"frost": 0, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "1", "choices": {"frost": 1, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "2", "choices": {"frost": 0, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "3", "choices": {"frost": 1, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "4", "choices": {"frost": 0, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "5", "choices": {"frost": 1, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "6", "choices": {"frost": 0, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "7", "choices": {"frost": 1, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "8", "choices": {"frost": 0, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "9", "choices": {"frost": 1, "fall": 0}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-whole", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "10", "choices": {"frost": 0, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]},
+    {"seed": "11", "choices": {"frost": 1, "fall": 1}, "order": ["dusk", "frost", "radio", "letter", "fall", "dark", "dawn"], "won": true, "ending": "end-cells", "quiet": ["letter", "fall", "dark"]}
+  ]
+}
