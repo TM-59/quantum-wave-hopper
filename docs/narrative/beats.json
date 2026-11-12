@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "arc": "Man in a hole on a ridge, told in counts: Agnes hands Hop her copper counter and her rule, five settings before the line is cut (0, quiet), frost and the logbooks in the stove or on the shelf (-1), the institute says the numbers are clean and the dome will stay (+2, the false peak), the letter says they only wanted the counter and Hop is 'not required' (-2, the turn), Agnes falls on the ice and is carried down the mountain (-3), the line goes dead and nobody reads the counter twice (-3, quiet, the bottom at 0.83), dawn with the counter in her hands or its empty case tapped twice over the radio (+1, bittersweet).",
+  "note": "Scenes open in src/farside.c at fixed progress points (dusk before the first night and the seal that ends a night); the words are in web/story.mjs (English and Japanese). The solver in src/wave.c is unchanged and every particle is found on the far side with the observer's own share for that barrier height (farside_transmission, checked bit for bit against the Wave API). Story beats change only how many particles a shot sends, the battery, the hours, Agnes's second reading and what an empty battery costs. The actual order per seed is in play-order.json, story numbers on/off, per beat and per choice path in ablation.json, per-night crises and failures in tension.json, all written by make story. tests/test_farside.c checks the physics, the order, every [mech] number, the [quiet] heavy scenes (letter, fall, dark), each [beat] and both [choice]s; make test re-runs bench rows and requires them verbatim. Emotion values are the author's; the review by someone else is pending.",
+  "characters": [
+    {"id": "agnes", "want": "hand the institute five numbers nobody can argue with, so they keep the dome", "need": "let the dome, the counter and the robot go, and trust a count she did not read herself", "start": "reads every seal twice with her own hands", "end": "hears the numbers from a flat in the town, or holds the counter once more and gives it up"},
+    {"id": "hop", "want": "do what Agnes asks, setting by setting", "need": "trust its own count when nobody reads it twice", "start": "carries every seal to Agnes", "end": "counts the last night alone and taps the counter twice itself"}
+  ],
+  "beats": [
+    {"id": "dusk", "chapter": 1, "summary": "The line is cut at dawn after the fifth night. Agnes asks for five settings of the Wall for the institute, gives Hop her copper counter (60 particles a shot instead of the dome's 16) and her rule: she taps it twice and reads every seal again.",
+     "valence": 0, "intensity": 1, "emotion": "relief", "tags": ["reward", "quiet"], "setup": ["s-odds", "s-tap", "s-counter"],
+     "mechanism": {"state": "FE_DUSK", "test": "[mech] dusk"}, "evidence": "Odds aren't promises."},
+    {"id": "frost", "chapter": 1, "summary": "Frost inside the dome. The copper drifts in the cold; the stove would warm it, and the only fuel left is forty winters of logbooks with last year's settings in them.",
+     "valence": -1, "intensity": 2, "emotion": "fear", "tags": ["choice", "cost"], "setup": ["s-logbook"],
+     "choice": {"options": 2, "changes": ["radio", "dark"], "labels": ["Burn the logbooks in the stove (a warm counter for two nights; an hour of stoking each)", "Keep the logbooks (a cold counter; last year's settings stay on the shelf)"]},
+     "mechanism": {"state": "frost", "test": "[mech] frost"}, "evidence": "There's nothing left to burn but the logbooks."},
+    {"id": "radio", "chapter": 2, "summary": "Corvin from the institute: the first two settings came through clean, a battery is on the morning truck, and he thinks they will keep the dome. Agnes puts on the scratched record.",
+     "valence": 2, "intensity": 2, "emotion": "joy", "tags": ["reward", "peak"], "payoff": ["s-logbook"],
+     "mechanism": {"state": "FE_RADIO", "test": "[mech] radio"}, "evidence": "I think they'll keep the dome."},
+    {"id": "letter", "chapter": 3, "summary": "The letter with the battery: the institute wanted the copper counter, the calibration is its paperwork; the dome comes down in spring, the line company charges the battery halfway from tonight, and Hop is on the list as not required.",
+     "valence": -2, "intensity": 3, "emotion": "anger", "tags": ["punishment", "twist"], "payoff": ["s-counter"],
+     "mechanism": {"state": "FE_LETTER", "test": "[mech] letter"},
+     "presentation": {"quiet": true, "test": "[quiet] letter"},
+     "evidence": "Maintenance unit. Not required."},
+    {"id": "fall", "chapter": 4, "summary": "Agnes goes out to the generator, falls on the iced steps and is taken down the ridge road; she will not come back up. From the stretcher: tap it twice yourself; keep the counter whole and bring it down, or use its cells.",
+     "valence": -3, "intensity": 3, "emotion": "sorrow", "tags": ["loss", "choice"], "irreversible": true, "payoff": ["s-tap"],
+     "choice": {"options": 2, "changes": ["dark", "dawn"], "labels": ["Keep the counter whole (it hears everything; the battery may not last the night)", "Take the counter's cells for the battery (more charge; the counter hears less)"]},
+     "mechanism": {"state": "FE_FALL", "test": "[mech] fall"},
+     "presentation": {"quiet": true, "test": "[quiet] fall"},
+     "evidence": "Read it twice yourself, you hear me? Tap it twice."},
+    {"id": "dark", "chapter": 5, "summary": "The line goes dead at dusk, the lamps go out from the far end. One battery, the counter, and nobody to read it twice; an empty battery now means sitting in the dark until the sun reaches the panels. Hop says Agnes's rule alone.",
+     "valence": -3, "intensity": 1, "emotion": "sorrow", "tags": ["loss", "quiet"], "irreversible": true, "payoff": ["s-odds"],
+     "mechanism": {"state": "FE_DARK", "test": "[mech] dark"},
+     "presentation": {"quiet": true, "test": "[quiet] dark"},
+     "evidence": "There is the battery, and the counter, and nobody to read it twice."},
+    {"id": "dawn", "chapter": 5, "summary": "Dawn. The fifth seal is in the book. Depending on the second choice, Hop carries the whole counter down to Agnes, who taps it twice and gives it up, or reads the numbers over the radio and taps the empty case twice.",
+     "valence": 1, "intensity": 2, "emotion": "relief", "tags": ["quiet"], "payoff": ["s-counter", "s-tap"],
+     "evidence": "You tap the empty case twice."}
+  ],
+  "endings": [
+    {"id": "end-whole", "when": {"fall": 0}, "text": [
+      "The sun comes over the ridge and onto the panels. The fifth seal is in the book.",
+      "You carry the counter down the ridge road, whole, still warm from the night. It takes the morning.",
+      "Agnes is at the window of her son's flat. She takes the counter in both hands, taps it twice and listens. It clicks. “Good,” she says. “Now they can have it.”"]},
+    {"id": "end-cells", "when": {"fall": 1}, "text": [
+      "The sun comes over the ridge. The fifth seal is in the book, read on the counter’s own cells.",
+      "The counter lies open on the bench, empty, its copper still bright. It will not click again.",
+      "You read the five numbers into the morning radio. In the town Agnes writes them down without a word. Then: “Tap it twice for me.” You tap the empty case twice."]}
+  ]
+}
