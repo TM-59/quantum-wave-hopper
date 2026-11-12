@@ -188,16 +188,18 @@ int main(void)
     CHECK(r == 2 && c.failures == f0 + 1 && fabs(c.hours - h - 1.0) < 1e-9 && c.banner == FB_BLACKOUT, "[mech] dark off: generator");
 
     /* [quiet] The heavy scenes open with no banner, and no "sealed" banner is raised before the next action. */
+    int quiet[3];
     static const int heavy[] = {FS_LETTER, FS_FALL, FS_DARK};
-    static const char *const heavy_id[] = {"letter", "fall", "dark"};
     for (int i = 0; i < 3; i++) {
         start(&c, &p, FE_ALL, heavy[i], 1, i % 2, 8 + i);
-        CHECK(c.scene == heavy[i] && farside_heavy(c.scene) && c.banner == FB_NONE, "[quiet] %s opens with banner %d", heavy_id[i], c.banner);
-        int loud = c.loud;
+        int opened = c.scene == heavy[i] && farside_heavy(c.scene) && c.banner == FB_NONE, loud = c.loud;
         farside_answer(&c, 0);
         if (c.scene == FS_NONE) { if (op_decide(&p, &c) == OP_SEAL) farside_seal(&c); else farside_fire(&c); }
-        CHECK(c.loud == loud && c.banner != FB_SEALED, "[quiet] %s: a sealed banner after it", heavy_id[i]);
+        quiet[i] = opened && c.loud == loud && c.banner != FB_SEALED;
     }
+    CHECK(quiet[0], "[quiet] letter: opens with no banner and no sealed banner follows it");
+    CHECK(quiet[1], "[quiet] fall: opens with no banner (the fourth seal raises none) and no sealed banner follows it");
+    CHECK(quiet[2], "[quiet] dark: opens with no banner and no sealed banner follows it");
     for (int i = 0; i < PLAY_SEEDS; i++) {
         RunResult rr;
         int frost, cells;

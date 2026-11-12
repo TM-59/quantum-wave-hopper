@@ -5,7 +5,9 @@
 #include <string.h>
 
 #define STEP_H 0.05            /* barrier height per dial step */
-#define SHOT_HOURS 0.25        /* a shot: the packet, the counter, the tally */
+#define SHOT_HOURS 0.05        /* a shot: the packet and the tally */
+#define PARTICLE_HOURS 0.003   /* plus this per particle sent (the counter resets after each one) */
+#define SETTLE_HOURS 0.15      /* plus the copper settling, up to this long after a shot (drawn per shot) */
 #define SEAL_HOURS 0.25        /* writing a seal into the night's record */
 #define BAD_HOURS 0.5          /* a failed seal: the check, tearing the page out */
 #define RED_LINE 2.0           /* a shot that leaves less than this in the battery is fired in the red */
@@ -13,12 +15,12 @@
 #define START_POWER 0.0        /* the battery at the first dusk, before the line charges it */
 #define GEN_WAIT 1.0           /* an empty battery before the line is cut: the generator, an hour, a failure */
 #define GEN_POWER 3.0
-#define SUN_WAIT 3.0           /* an empty battery after the line is cut: sit in the dark until the sun is on the panels */
+#define SUN_WAIT 5.0           /* an empty battery after the line is cut: sit in the dark until the sun is on the panels */
 #define SUN_POWER 3.0
 #define BASE_PARTICLES 16      /* the dome's own counter */
 
 #define DUSK_PARTICLES 60      /* FE_DUSK: Agnes's copper counter */
-#define STOVE_FACTOR 2         /* FE_STOVE: a warm counter in nights 2-3 */
+#define STOVE_FACTOR 2         /* FE_STOVE: a cold counter in nights 2-3 hears half the particles */
 #define STOVE_HOURS 1.0        /* FE_STOVE: an hour of stoking before the counter stops drifting */
 #define RADIO_BATTERY 4.0      /* FE_RADIO: the institute's battery, on top of the charge of night 3 */
 #define LETTER_CHARGE 4.0      /* FE_LETTER: the line charges only up to this from night 3 */
@@ -26,7 +28,7 @@
 
 /* Each night's band of far-side share: Agnes's targets. */
 static const double TARGET[F_NIGHTS] = {0.50, 0.25, 0.70, 0.13, 0.50};
-static const double TOL[F_NIGHTS] = {0.08, 0.05, 0.05, 0.04, 0.03};
+static const double TOL[F_NIGHTS] = {0.08, 0.04, 0.05, 0.04, 0.03};
 /* Last year's settings, written in the logbooks (FE_LOGBOOK), for nights 4 and 5. */
 static const int LOGBOOK[F_NIGHTS] = {-1, -1, -1, 17, 10};
 
@@ -82,7 +84,8 @@ static double unit(Farside *c)
 int farside_particles(const Farside *c)
 {
     int n = on(c, FE_DUSK) ? DUSK_PARTICLES : BASE_PARTICLES;
-    if (c->frost == 0 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2)) n *= STOVE_FACTOR;
+    /* The frost: a cold counter misses particles in nights 2-3 unless the stove warms it. */
+    if (c->frost == 1 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2)) n /= STOVE_FACTOR;
     if (c->cells == 1 && on(c, FE_CELLS) && c->night == 4) n /= 3;
     return n;
 }
@@ -133,6 +136,8 @@ static void start_night(Farside *c)
     memset(c->ruled, 0, sizeof c->ruled);
     memset(c->doubt, 0, sizeof c->doubt);
     c->last_n = c->last_k = 0;
+    /* Every night draws from its own stream, so a choice changes the nights it touches and not, by chance, every later one. */
+    c->rng = mix64(mix64(c->seed + 0x2545f4914f6cdd1dULL) + (uint64_t)(c->night + 1) * 0x9e3779b97f4a7c15ULL);
     c->power = fmax(c->power, farside_charge(c, c->night));
     if (c->night == 2 && on(c, FE_RADIO)) c->power += RADIO_BATTERY;
     if (c->night == 4 && c->cells == 1 && on(c, FE_CELLS)) c->power += CELL_POWER;
@@ -143,6 +148,7 @@ void farside_init(Farside *c, unsigned effects, uint64_t seed)
 {
     memset(c, 0, sizeof *c);
     c->effects = effects;
+    c->seed = seed;
     c->rng = mix64(seed + 0x2545f4914f6cdd1dULL);
     c->frost = c->cells = -1;
     c->agnes = 1;
@@ -206,10 +212,11 @@ int farside_fire(Farside *c)
         return 2;
     }
     c->power -= 1.0;
-    c->hours += SHOT_HOURS;
     c->shots++;
     if (c->power < RED_LINE - 1e-9) { c->red++; c->crisis_night[c->night] = 1; }
-    count(c, farside_particles(c));
+    int n = farside_particles(c);
+    count(c, n);
+    c->hours += SHOT_HOURS + PARTICLE_HOURS * n + SETTLE_HOURS * unit(c);
     return 0;
 }
 
@@ -223,7 +230,14 @@ int farside_seal(Farside *c)
         /* Agnes taps the counter twice and reads it again (no battery: her counter's own cell). */
         count(c, farside_particles(c));
         double p = (double)c->tally_k[step] / c->tally_n[step];
-        if (p < lo || p > hi) { c->doubt[step]++; c->not_yet++; c->banner = FB_NOT_YET; return 2; }
+        if (p < lo || p > hi) {
+            /* A near miss: a crisis, not a failure. */
+            c->doubt[step]++;
+            c->not_yet++;
+            c->crisis_night[night] = 1;
+            c->banner = FB_NOT_YET;
+            return 2;
+        }
     }
     double t = farside_transmission(step);
     if (t >= lo && t <= hi) { clear_night(c); return 0; }

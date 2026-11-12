@@ -30,7 +30,7 @@ enum {
 /* Numeric story effects, one bit each, so the bench can remove them one by one. */
 enum {
     FE_DUSK = 1u << 0,     /* Agnes's copper counter (more particles per shot) and her second reading before every seal */
-    FE_STOVE = 1u << 1,    /* burning the logbooks: a warm counter in nights 2-3 (twice the particles), an hour of stoking each */
+    FE_STOVE = 1u << 1,    /* the frost: a cold counter hears half the particles in nights 2-3; burning the logbooks warms it, an hour of stoking each */
     FE_LOGBOOK = 1u << 2,  /* keeping the logbooks: last year's setting for nights 4 and 5 is written in them */
     FE_RADIO = 1u << 3,    /* the institute's battery */
     FE_LETTER = 1u << 4,   /* the line company cuts the nightly charge from night 3 */
@@ -44,7 +44,7 @@ enum { FB_NONE, FB_SEALED, FB_NOT_YET, FB_TOO_MANY, FB_TOO_FEW, FB_BLACKOUT, FB_
 
 typedef struct {
     unsigned effects;
-    uint64_t rng;
+    uint64_t seed, rng;
     int night;            /* 0..4; F_NIGHTS when the five nights are over */
     int scene;            /* FS_* open now, or FS_NONE */
     int frost;            /* -1 until chosen; 0 = burn the logbooks, 1 = keep them */
@@ -55,7 +55,7 @@ typedef struct {
     double hours;         /* hours the five nights have taken so far */
     int shots, red, failures, dark_waits, blackouts, bad_seals, not_yet;
     int fail_night[F_NIGHTS];
-    int crisis_night[F_NIGHTS];   /* 1 if a shot was fired in the red, a seal failed or the battery ran out that night */
+    int crisis_night[F_NIGHTS];   /* 1 if a shot was fired in the red, Agnes said "not yet", a seal failed or the battery ran out */
     int tally_n[F_STEPS], tally_k[F_STEPS];   /* this night's particles sent / found on the far side, per dial step */
     int ruled[F_STEPS];   /* this night's settings the check rejected: +1 too many through, -1 too few */
     int doubt[F_STEPS];   /* this night's "not yet" from Agnes, per dial step */
