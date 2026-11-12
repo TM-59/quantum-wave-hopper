@@ -26,7 +26,7 @@ C11 + libm の 1 次元時間依存シュレーディンガー方程式ソルバ
   物語が変えてよいのは一発の粒子数・電池・時間・アグネスの二度読み・電池切れの扱いだけ。
 - 場面は進行の固定点(最初の夜の前と、夜を終える封)でだけ開く。重い場面(letter・fall・dark)は帯を出さない。
 - `make story` が `docs/narrative/{play-order,ablation,tension}.json` を書き、`make test` が 8 行を再実行して一字一句の一致と種の重複なしを強制する。
-  数値を変えたら `make story` で出し直し、`tm studio score quantum-wave-hopper --detail` で確かめる。beats.json の evidence は `web/story.mjs` の文そのまま。
+  数値を変えたら `make story` で出し直す。beats.json の evidence は `web/story.mjs` の文そのまま。
 - 理論の手引きの 4 頁目(S15〜S19)が物語の規則。
 
 ## M4 の独自原画の例外
