@@ -5,7 +5,7 @@ Steer a quantum wave packet at a potential barrier and tune how much tunnels thr
 
 ![demo](docs/demo.gif)
 
-**Theory handbook**: [docs/theory/](docs/theory/README.md) — 19 statements (the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission and tunnelling, the Crank–Nicolson scheme and its unitarity, the tridiagonal solve, accuracy, the hard walls, the program's rules, and the rules of the story layer), each with its equation, assumptions, derivation, code, tests and a figure. `make theory-figs` regenerates the figures and the measured values; `make theory-check` checks the coverage table.
+**Theory handbook**: [docs/theory/](docs/theory/README.md) — 25 statements (the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission and tunnelling, the Crank–Nicolson scheme and its unitarity, the tridiagonal solve, accuracy, the hard walls, the program's rules, the rules of the story layer, and two barriers: transfer matrices, resonant tunnelling, the Breit–Wigner line and the lifetime ħ/Γ), each with its equation, assumptions, derivation, code, tests and a figure. `make theory-figs` regenerates the figures and the measured values; `make theory-check` checks the coverage table.
 
 (理論の手引き: 式・前提・導出・実装箇所・検査を、全項目に図つきで説明します。)
 
@@ -44,12 +44,31 @@ Five nights on a ridge before the power line is cut. Agnes, the observatory's la
 
 The painted backdrop and Hop, the observatory's small robot guide, are original illustrations generated locally (see [docs/art-direction.md](docs/art-direction.md)). Hop rests on the highest point of the computed density; that is decoration, not a measured particle position.
 
+## Two barriers: resonant tunnelling
+
+Below the observatory a second experiment puts two barriers (height 1, width 1, four apart) in the packet's way. One of them alone passes about a third of a wave of energy 0.3; the pair passes 3 %. But at two energies, **E₁ = 0.158** and **E₂ = 0.638**, the wave runs back and forth between the walls in step and the pair passes everything (T = 1 to 15 digits). Pick an energy with the slider or tune to a resonance and send a packet (σ = 20); the close-up shows the probability piling up between the walls and the chart shows each run on the line T(E). "Release a wave from the well" puts a standing wave between the barriers and times its escape: it decays as exp(−Γ₁t) with the width Γ₁ = 0.0173 of the first line, a lifetime ħ/Γ₁ = 58.
+
+(二重障壁: 二つの壁の間で波がちょうど往復すると全部通り抜ける共鳴トンネル。共鳴の幅 Γ と、壁の間に置いた波が漏れ出す寿命 ħ/Γ が一致することを、時間発展で確かめます。)
+
+| On resonance: the gap fills | The run complete | Released from the well |
+|---|---|---|
+| ![pile-up](docs/images/two-barriers-pileup.jpg) | ![on resonance](docs/images/two-barriers.jpg) | ![release](docs/images/two-barriers-release.jpg) |
+
+![two barriers on a phone](docs/images/two-barriers-mobile.jpg)
+
+The transmission is computed by transfer matrices (`layers_transmission`) and checked against an independent Fabry–Pérot closed form (4e-15). Simulated packets match the packet-averaged line within 0.4 % at 19 energies, and the decay rate measured from the time evolution matches Γ₁ within 1.3 %. The terminal writes the line and the simulated points with `./quantum-wave-hopper --resonance docs`:
+
+![resonance](docs/resonance.svg)
+
+The theory is page 5 of the [handbook](docs/theory/05-double-barrier.md).
+
 ## Run
 
 ```sh
 make && ./quantum-wave-hopper          # interactive
 ./quantum-wave-hopper --snapshot       # one frame, no terminal needed
 ./quantum-wave-hopper --gif docs/demo.gif  # scripted tunnelling run as an animated GIF
+./quantum-wave-hopper --resonance docs     # two barriers: docs/resonance.svg and docs/resonance.csv
 make test && make plots                # unit tests and docs/*.svg
 docker build -t quantum-wave-hopper .  # same, reproducibly
 make web && make play                  # browser observatory at http://localhost:4216 (needs emcc)
@@ -78,7 +97,9 @@ A packet (σ = 10, k₀ = 1) hits a barrier of height 0.6 and width 2. Simulated
 
 ## Tests
 
-`tests/test_wave.c` checks: norm conservation (1e-10), free packet motion, spreading `σ√(1+(t/2σ²)²)` and energy, harmonic-oscillator ground state stays stationary, barrier formula limits and resonance, simulated tunnelling vs theory (5 %), renderer bounds.
+`tests/test_wave.c` checks: norm conservation (1e-10), free packet motion, spreading `σ√(1+(t/2σ²)²)` and energy, harmonic-oscillator ground state stays stationary, barrier formula limits and resonance, simulated tunnelling vs theory (5 %), renderer bounds; for two barriers: transfer matrices against the single-barrier formula and T + R = 1, against the Fabry–Pérot closed form, full transmission at both resonances, the Breit–Wigner line, simulated packets against the packet-averaged line (1 %), and the decay rate from the well against the width Γ₁ (3 %).
+
+`tests/test_resonance.c` checks the browser's two-barrier adapter: it finds the same resonances, clamps its controls, a packet on resonance passes as the packet theory says (1 %) while filling the gap, and the released wave decays at Γ₁ (3 %).
 
 `tests/test_farside.c` checks the story layer: the share it uses is the Wave API's bit for bit, the counter pools to it, every scene's numbers, the scene order, quiet heavy scenes, each scene's effect and both choices.
 
@@ -86,6 +107,6 @@ A packet (σ = 10, k₀ = 1) hits a barrier of height 0.6 and width 2. Simulated
 
 ## Roadmap
 
-See the Issues: double barrier and resonant tunnelling, 2D slit interference, time-dependent potentials.
+See the Issues: 2D slit interference, time-dependent potentials.
 
 Part of a series of small C physics toys, tracked in [algo-vis-panel](https://github.com/TM-59/algo-vis-panel/issues/6). MIT licensed.

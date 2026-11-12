@@ -3,6 +3,7 @@
  * same solver (src/wave.c) and browser adapter (src/observer.c) the program uses; nothing here
  * changes them. */
 #include "../src/observer.h"
+#include "../src/resonance.h"
 #include "../src/svg.h"
 #include "../src/wave.h"
 
@@ -445,6 +446,218 @@ static void fig_adapter(void)
     value("manual-real", "qw_real in the bin just right of the packet centre over the square root of qw_density there: the bin centre is 0.5 from the packet centre (theory cos(k0 x 0.5))", qw_real(95) / sqrt(qw_density(95)), cos(0.5));
 }
 
+/* ---- Two barriers (M2): S20..S25 ---- */
+
+/* S20: transfer matrices reproduce the single-barrier formula and conserve T + R. */
+static void fig_layers(void)
+{
+    int n = 0;
+    double worst = 0.0, worst_sum = 0.0, worst_gap0 = 0.0;
+    for (double e = 0.01; e <= 3.0001; e += 0.01, n++) {
+        double k = sqrt(2.0 * e), edges[2] = {0.0, 2.0}, heights[1] = {0.6}, r;
+        double t = layers_transmission(k, 1, edges, heights, &r);
+        xs[n] = (float)(e / 0.6);
+        ya[n] = (float)t;
+        yb[n] = (float)barrier_transmission(k, 0.6, 2.0);
+        yc[n] = (float)(t + r);
+        worst = fmax(worst, fabs(t - barrier_transmission(k, 0.6, 2.0)));
+        worst_sum = fmax(worst_sum, fabs(t + r - 1.0));
+        worst_gap0 = fmax(worst_gap0, fabs(double_barrier_transmission(k, 1.0, 1.0, 0.0) - barrier_transmission(k, 1.0, 2.0)));
+    }
+    double e5[6] = {-1.0, 0.0, 1.0, 5.0, 6.0, 7.5}, h5[5] = {0.3, 1.0, 0.0, 1.0, 0.2}, r5, sum5 = 0.0;
+    for (double e = 0.01; e <= 2.0; e += 0.01) {
+        double t5 = layers_transmission(sqrt(2.0 * e), 5, e5, h5, &r5);
+        sum5 = fmax(sum5, fabs(t5 + r5 - 1.0));
+    }
+    value("layers-single", "largest difference between one transfer-matrix layer and the closed-form barrier formula, V = 0.6, width 2, 300 energies (theory 0)", worst, 0.0);
+    value("layers-sum", "largest |T + R - 1| for that layer (theory 0: the current is conserved)", worst_sum, 0.0);
+    value("layers-sum-5", "largest |T + R - 1| for an uneven stack of five layers, 200 energies (theory 0)", sum5, 0.0);
+    value("layers-gap0", "largest difference between two barriers of width 1 with no gap and one barrier of width 2 (theory 0)", worst_gap0, 0.0);
+    Series s[] = {{"transfer matrices", ya, "#1f77b4"}, {"closed form", yb, "#d62728"}, {"T + R", yc, "#888888"}};
+    plot("layers.svg", "One layer by transfer matrices against the closed form (V = 0.6, width 2)", "E / V", "T", n, s, 3);
+}
+
+/* Closed-form amplitudes of one barrier on [0, b], and the Fabry-Perot sum for two of them a gap apart. */
+static double fabry_perot(double k, double height, double b, double gap, double *phase)
+{
+    double complex kappa = csqrt(2.0 * (height - 0.5 * k * k) + 0.0 * I);
+    double complex den = ccosh(kappa * b) + I * (kappa * kappa - k * k) / (2.0 * k * kappa) * csinh(kappa * b);
+    double complex t0 = cexp(-I * k * b) / den, r0 = -I * (k * k + kappa * kappa) / (2.0 * k * kappa) * csinh(kappa * b) / den;
+    double complex loop = r0 * r0 * cexp(2.0 * I * k * gap), d = 1.0 - loop;
+    if (phase) *phase = remainder(carg(loop), 2.0 * PI);
+    double tt = creal(t0 * conj(t0));
+    return tt * tt / creal(d * conj(d));
+}
+
+static double res_e[2], res_g[2];
+
+/* S21: the pair's transmission, its resonances, and the Fabry-Perot closed form. */
+static void fig_double(void)
+{
+    double_barrier_resonance(1.0, 1.0, 4.0, 0.01, 1.0, &res_e[0], &res_g[0]);
+    double_barrier_resonance(1.0, 1.0, 4.0, res_e[0] + 3.0 * res_g[0], 1.0, &res_e[1], &res_g[1]);
+    int n = 0;
+    double worst = 0.0;
+    for (double e = 0.004; e <= 1.2001; e += 0.002, n++) {
+        double k = sqrt(2.0 * e), t = double_barrier_transmission(k, 1.0, 1.0, 4.0);
+        xs[n] = (float)e;
+        ya[n] = (float)log10(t);
+        yb[n] = (float)log10(barrier_transmission(k, 1.0, 1.0));
+        yc[n] = (float)log10(fabry_perot(k, 1.0, 1.0, 4.0, NULL));
+        if (fabs(e - 1.0) > 1e-6) worst = fmax(worst, fabs(t - fabry_perot(k, 1.0, 1.0, 4.0, NULL)));
+    }
+    double ph1, ph2, box1 = 0.5 * pow(PI / 4.0, 2), box2 = 0.5 * pow(2.0 * PI / 4.0, 2);
+    fabry_perot(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0, &ph1);
+    fabry_perot(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0, &ph2);
+    value("fp-diff", "largest difference between the transfer matrices and the Fabry-Perot closed form for two barriers (V = 1, width 1, gap 4), 599 energies (theory 0)", worst, 0.0);
+    value("res-e1", "first resonance energy, the peak of T found by double_barrier_resonance (theory: below the lowest box level pi^2 / (2 L^2) = 0.3084)", res_e[0], box1);
+    value("res-e2", "second resonance energy (box level 2 pi^2 / L^2 = 1.2337)", res_e[1], box2);
+    value("res-t1", "T at the first resonance (theory 1: a symmetric pair transmits fully)", double_barrier_transmission(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0), 1.0);
+    value("res-t2", "T at the second resonance (theory 1)", double_barrier_transmission(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0), 1.0);
+    value("res-phase1", "round-trip phase 2 arg r0 + 2 k L at the first resonance, reduced to (-pi, pi] (theory 0)", ph1, 0.0);
+    value("res-phase2", "the same at the second resonance (theory 0)", ph2, 0.0);
+    double mid = 0.30, km = sqrt(2.0 * mid);
+    value("res-dark", "T of the pair at E = 0.30, between the resonances, against one barrier alone", double_barrier_transmission(km, 1.0, 1.0, 4.0), barrier_transmission(km, 1.0, 1.0));
+    double edges[4] = {0.0, 1.0, 5.0, 6.5}, heights[3] = {1.0, 0.0, 1.0}, best = 0.0;
+    for (double e = 0.10; e < 0.25; e += 1e-5) best = fmax(best, layers_transmission(sqrt(2.0 * e), 3, edges, heights, NULL));
+    value("res-asym", "highest T of an uneven pair (widths 1 and 1.5) near the first resonance (theory: below 1)", best, 1.0);
+    Series s[] = {{"pair (transfer matrices)", ya, "#1f77b4"}, {"one barrier", yb, "#888888"}, {"Fabry-Perot closed form", yc, "#d62728"}};
+    plot("double.svg", "Two barriers (V = 1, width 1, gap 4): log10 T against energy", "energy E", "log10 T", n, s, 3);
+}
+
+/* S22: the line shape near the first resonance against the Breit-Wigner Lorentzian. */
+static double bw_gap(double width, float *out, int *count)
+{
+    double e1, g1, worst = 0.0;
+    double_barrier_resonance(1.0, width, 4.0, 0.01, 1.0, &e1, &g1);
+    int n = 0;
+    for (double x = -3.0; x <= 3.0001; x += 0.02, n++) {
+        double t = double_barrier_transmission(sqrt(2.0 * (e1 + x * g1)), 1.0, width, 4.0), bw = 1.0 / (1.0 + 4.0 * x * x);
+        if (out) out[n] = (float)t;
+        if (fabs(x) <= 1.0001) worst = fmax(worst, fabs(t - bw));
+    }
+    if (count) *count = n;
+    return worst;
+}
+
+static void fig_breit_wigner(void)
+{
+    int n = 0;
+    double thin = bw_gap(1.0, ya, &n), thick = bw_gap(1.5, yb, NULL);
+    for (int i = 0; i < n; i++) {
+        double x = -3.0 + 0.02 * i;
+        xs[i] = (float)x;
+        yc[i] = (float)(1.0 / (1.0 + 4.0 * x * x));
+    }
+    double e15, g15;
+    double_barrier_resonance(1.0, 1.5, 4.0, 0.01, 1.0, &e15, &g15);
+    value("bw-gap-1", "largest |T - Lorentzian| within one width of the first resonance, barriers 1 wide (Gamma / E1 = 0.11)", thin, 0.0);
+    value("bw-gap-15", "the same with barriers 1.5 wide (Gamma / E1 = 0.029)", thick, 0.0);
+    value("bw-width-15", "width Gamma of that narrower line", g15, 0.0);
+    value("bw-ratio", "ratio of the two gaps against the ratio of Gamma / E1 (theory: the gap is first order in Gamma / E1)",
+          thick / thin, (g15 / e15) / (res_g[0] / res_e[0]));
+    Series s[] = {{"barriers 1 wide", ya, "#1f77b4"}, {"barriers 1.5 wide", yb, "#2ca02c"}, {"Breit-Wigner", yc, "#d62728"}};
+    plot("breit-wigner.svg", "The first resonance against the Lorentzian, in units of its width", "(E - E1) / Gamma", "T", n, s, 3);
+}
+
+/* S23: what is put between the barriers leaks out at the rate Gamma / hbar. */
+static void fig_decay(void)
+{
+    Wave w;
+    double reach = 30.0 + 2.5 * 200.0, a = 1.0, b = 5.0;
+    must(wave_init(&w, (int)(2.0 * reach / 0.05), -reach, 0.05, 0.05));
+    wave_set_double_barrier(&w, 0.0, 1.0, 4.0, 1.0);
+    for (int j = 0; j < w.n; j++) {
+        double x = wave_x(&w, j);
+        w.psi[j] = x > a && x < b ? sin(PI * (x - a) / 4.0) : 0.0;
+    }
+    double norm = sqrt(wave_norm(&w));
+    for (int j = 0; j < w.n; j++) w.psi[j] /= norm;
+    int n = 0;
+    double at30 = 0.0;
+    for (int k = 0; k <= 4000; k++) {
+        double t = k * 0.05, p = wave_prob_between(&w, a, b);
+        if (k == 600) at30 = p;
+        if (k % 40 == 0) { xs[n] = (float)t; ya[n] = (float)log(p); n++; }
+        if (k < 4000) wave_step(&w);
+    }
+    for (int i = 0; i < n; i++) yb[i] = (float)(log(at30) - res_g[0] * (xs[i] - 30.0));
+    wave_free(&w);
+    double rate = simulate_well_decay(1.0, 1.0, 4.0, 30.0, 180.0);
+    value("decay-rate", "decay rate of the probability between the barriers, fitted on t in [30, 180], grid dx 0.05 (theory: the width Gamma of the first resonance)", rate, res_g[0]);
+    value("decay-lifetime", "lifetime 1 / rate (theory hbar / Gamma)", 1.0 / rate, 1.0 / res_g[0]);
+    value("decay-early", "probability still between the barriers at t = 30 (the part of the box state that is not the resonance leaves first)", at30, 0.0);
+    double k1 = sqrt(2.0 * res_e[0]), t1 = barrier_transmission(k1, 1.0, 1.0);
+    value("gamma-semiclassical", "the classical estimate hbar v T1 / (2 L): speed sqrt(2 E1) over the round trip 2 L = 8, times one barrier's T at E1 (theory: Gamma, to order of magnitude)", k1 * t1 / 8.0, res_g[0]);
+    Series s[] = {{"ln P between the barriers", ya, "#1f77b4"}, {"slope -Gamma", yb, "#d62728"}};
+    plot("decay.svg", "Probability left between the barriers (log scale) against time", "t", "ln P", n, s, 2);
+}
+
+/* S24: simulated packets against the packet-averaged transfer matrices, and the limits. */
+static void fig_packet_resonance(void)
+{
+    int n = 0;
+    double worst = 0.0;
+    for (double e = 0.06; e <= 0.78001; e += 0.04, n++) {
+        double k = sqrt(2.0 * e), sim = simulate_double_transmission(k, 10.0, 1.0, 1.0, 4.0), th = double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0);
+        xs[n] = (float)e;
+        ya[n] = (float)sim;
+        yb[n] = (float)th;
+        yc[n] = (float)double_barrier_transmission(k, 1.0, 1.0, 4.0);
+        if (th > 0.01) worst = fmax(worst, fabs(sim / th - 1.0));
+    }
+    double k1 = sqrt(2.0 * res_e[0]);
+    value("dpacket-worst", "largest relative gap between simulated packets (sigma 10) and the packet-averaged transfer matrices over 19 energies where T > 0.01", worst, 0.0);
+    value("dpacket-e1", "simulated packet sigma 10 sent at E1 (theory: the packet average, not 1)", simulate_double_transmission(k1, 10.0, 1.0, 1.0, 4.0), double_packet_transmission(k1, 10.0, 1.0, 1.0, 4.0));
+    value("dpacket-e1-20", "the packet average at E1 for sigma 20 (the browser's packet)", double_packet_transmission(k1, 20.0, 1.0, 1.0, 4.0), 0.0);
+    value("dpacket-e1-40", "the packet average at E1 for sigma 40", double_packet_transmission(k1, 40.0, 1.0, 1.0, 4.0), 0.0);
+    value("dpacket-spread", "energy spread k0 / (2 sigma) of the sigma 10 packet at E1, against the width Gamma", k1 / 20.0, res_g[0]);
+    double grid = (1.0 - cos(k1 * 0.1)) / 0.01;
+    value("dpacket-grid", "energy of the wave k1 on the browser's grid (dx 0.1) against E1: the grid's shift of the resonance", grid, res_e[0]);
+    Series s[] = {{"simulated packet", ya, "#1f77b4"}, {"packet formula", yb, "#d62728"}, {"plane wave", yc, "#888888"}};
+    plot("packet-resonance.svg", "Packets (sigma 10) sent at two barriers: simulation against the packet formula", "energy E", "T", n, s, 3);
+}
+
+/* S25: the browser's two-barrier experiment. */
+static void fig_rs_adapter(void)
+{
+    rs_reset(0);
+    rs_energy(rs_value(RS_E1));
+    int n = 0;
+    double peak = 0.0, worst_norm = 0.0;
+    while (!rs_value(RS_DONE) && n < MAXN) {
+        xs[n] = (float)rs_value(RS_TIME);
+        ya[n] = (float)rs_value(RS_P_LEFT);
+        yb[n] = (float)rs_value(RS_P_RIGHT);
+        yc[n] = (float)(5.0 * rs_value(RS_P_WELL));
+        peak = fmax(peak, rs_value(RS_P_WELL));
+        worst_norm = fmax(worst_norm, fabs(rs_value(RS_NORM) - 1.0));
+        n++;
+        rs_step(60);
+    }
+    value("rs-right", "browser experiment at E1: probability beyond the pair at the end (theory: the packet average for sigma 20)", rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
+    value("rs-time", "time at which that run stopped (the well had emptied below 1e-5 or the fast side neared the wall)", rs_value(RS_TIME), 0.0);
+    value("rs-well-peak", "largest probability held between the barriers during that run", peak, 0.0);
+    value("rs-norm", "largest departure of the norm from 1 during that run (theory 0)", worst_norm, 0.0);
+    Series s[] = {{"left of the pair", ya, "#1f77b4"}, {"beyond it", yb, "#d62728"}, {"between x 5", yc, "#2ca02c"}};
+    plot("rs-demo.svg", "The browser's packet at the first resonance: where the probability is", "t", "probability", n, s, 3);
+    rs_energy(0.40);
+    while (!rs_value(RS_DONE)) rs_step(400);
+    value("rs-off", "the same experiment at E = 0.40, between the resonances (theory: the packet average)", rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
+    rs_reset(1);
+    double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
+    int m = 0;
+    while (!rs_value(RS_DONE)) {
+        double t = rs_value(RS_TIME);
+        if (t >= 30.0 - 1e-9) { double y = log(rs_value(RS_P_WELL)); sx += t; sy += y; sxx += t * t; sxy += t * y; m++; }
+        rs_step(20);
+    }
+    value("rs-release", "browser 'release from the well' run on its grid (dx 0.1): decay rate fitted on [30, 200] (theory Gamma)", -(m * sxy - sx * sy) / (m * sxx - sx * sx), rs_value(RS_G1));
+    rs_reset(0);
+    rs_energy(9.0);
+    value("rs-clamp", "energy after asking for 9 (theory 0.75: clamped)", rs_value(RS_ENERGY), 0.75);
+}
+
 int main(int argc, char **argv)
 {
     snprintf(dir, sizeof dir, "%s", argc > 1 ? argv[1] : "docs/theory/figures");
@@ -465,6 +678,12 @@ int main(int argc, char **argv)
     fig_stationary();
     fig_walls();
     fig_adapter();
+    fig_layers();
+    fig_double();
+    fig_breit_wigner();
+    fig_decay();
+    fig_packet_resonance();
+    fig_rs_adapter();
     fclose(values);
     return 0;
 }

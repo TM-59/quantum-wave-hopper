@@ -13,11 +13,17 @@ C11 + libm の 1 次元時間依存シュレーディンガー方程式ソルバ
   Emscripten を有効にして `make web && node scripts/smoke.cjs` を手元で回す。
 - 理論の手引きは `docs/theory/`。`make theory-figs` が図と実測値の表を `tests/theory_figs.c` から再生成し、`make theory-check` が
   対応表(文 → 頁 → 図 → 関数 → テスト)の欠け・リンク切れ・消えた関数名・未掲載の公開関数で落ちる。法則・規則を足したら同じ PR で頁と図と表を足す。
-  README の「19 statements」は表の行数と合わせる。
+  README の「25 statements」は表の行数と合わせる。
 - スマホ(幅 720px 以下・高さ 500px 以下・タッチ主体)では DOM と canvas の全文字を 14 CSS px 以上、操作を 44 CSS px 以上にする。`make smoke` が 390×844 と 844×390 で実測する。`window.__tmGate` は読み取り専用。
 - CI は PR の軽量ゲート(docker build で `make test && make plots`)のみ。WASM ビルド・撮影・E2E はローカル専用。
 - 公開 repo。コミット・PR に生成 AI の署名、私的な情報を入れない(公開前に private 情報の検査と差分の目視を行う)。
 - 実画面は `docs/images/`(`make smoke` が撮る)、原画と生成指示・採否は `assets/art/` と `docs/art-direction.md`。
+
+## 二重障壁(M2、Issue #2)
+
+- 物理は `src/wave.c` の追加関数(転送行列 `layers_transmission`・共鳴探索 `double_barrier_resonance`・パケット平均・時間発展の実験)。既存関数と既存出力は変えない。
+- ブラウザーの第二の実験は別アダプター `src/resonance.c`(`rs_*`、格子 11,000 点 x ∈ [−400, 700)・Δx 0.1)と `web/resonance.mjs`(描画だけ)。`make bench` が `build/resonance-trace.csv` を書き、`make smoke` が WASM と照合する。
+- 端末出力は `./quantum-wave-hopper --resonance docs`(`docs/resonance.svg`・`docs/resonance.csv`、`make plots` に含む)。理論の手引きの 5 頁目(S20〜S25)。
 
 ## 物語の層「向こう側」(M5、Issue #7)
 

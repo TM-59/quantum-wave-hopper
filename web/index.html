@@ -82,6 +82,54 @@
       <canvas id="plot" width="1080" height="230" role="img" aria-label="Transmitted probability in percent against time"></canvas>
       <p id="plot-note">Time in units of ħ/E · the dashed line is the exact barrier formula averaged over the packet's momenta</p></div>
   </section>
+  <section id="two-barriers" class="resonance" aria-label="Two barriers: resonant tunnelling">
+    <div class="rs-intro"><p class="eyebrow">02 / TWO BARRIERS</p><h2>Two walls can be <em>clearer than one.</em></h2>
+      <p>Two barriers of height V = 1 and width 1, four apart. At a few energies the wave runs back and forth between them in step and the pair lets the whole wave through; between those energies the pair is darker than either wall alone. Choose an energy and send a packet, or put a wave between the walls and time its escape.</p></div>
+    <div class="layout">
+      <section class="panel" aria-label="Two-barrier observation">
+        <div class="view-heading"><span><i class="live-dot" aria-hidden="true"></i> <span id="rs-mode">PACKET AT ONE ENERGY</span></span><span id="rs-clock">t = 0.0</span></div>
+        <div class="rs-views">
+          <canvas id="rs-scene" role="img" aria-label="Probability density of the packet against position from -200 to 200, with the two barriers."></canvas>
+          <canvas id="rs-zoom" role="img" aria-label="Close-up of the two barriers: the density between them, the packet energy and the two resonance energies."></canvas>
+        </div>
+        <div class="legend" aria-label="Legend of the two-barrier experiment">
+          <span><i class="key reflected"></i> before the pair (x &lt; 0)</span>
+          <span><i class="key well"></i> between the barriers (1 ≤ x &lt; 5)</span>
+          <span><i class="key transmitted"></i> beyond the pair (x ≥ 6)</span>
+          <span><i class="key barrier"></i> barriers V = 1</span>
+          <span><i class="key energy"></i> packet energy E</span>
+          <span><i class="key level"></i> resonance energies E₁, E₂</span>
+        </div>
+        <div class="telemetry" aria-label="Two-barrier readouts">
+          <div><span>THROUGH</span><strong id="rs-tr">—</strong><small>%</small></div>
+          <div><span>BETWEEN THE WALLS</span><strong id="rs-well">—</strong><small>%</small></div>
+          <div><span>THEORY, THIS PACKET</span><strong id="rs-th">—</strong><small>%</small></div>
+          <div><span>PLANE WAVE T(E)</span><strong id="rs-plane">—</strong><small>%</small></div>
+        </div>
+      </section>
+      <aside class="control-panel" aria-label="Energy controls">
+        <p class="eyebrow">YOUR ENERGY</p><h2>Find the<br>open door.</h2>
+        <label for="rs-energy">Packet energy E <output id="rs-energy-value" for="rs-energy">0.300</output></label>
+        <input id="rs-energy" type="range" min="0.05" max="0.75" step="0.005" value="0.3" disabled>
+        <div class="range-ends"><span>0.05</span><span>barrier top V = 1</span><span>0.75</span></div>
+        <button id="rs-send" class="primary" disabled><span>Send a packet at E</span> <span aria-hidden="true">→</span></button>
+        <div class="secondary-actions"><button id="rs-pause" disabled>Hold the run</button><span>width 1 · gap 4 · σ = 20</span></div>
+        <div class="experiment"><p class="eyebrow">OR TUNE TO A RESONANCE</p>
+          <button id="rs-e1" disabled><span id="rs-e1-label">Resonance 1</span> <span aria-hidden="true">→</span></button>
+          <button id="rs-e2" disabled><span id="rs-e2-label">Resonance 2</span> <span aria-hidden="true">→</span></button>
+          <button id="rs-release" disabled>Release a wave from the well <span aria-hidden="true">→</span></button>
+          <p id="rs-note">The packet (σ = 20) holds a spread of energies; only the part inside the resonance line passes, so even on resonance about half gets through.</p></div>
+      </aside>
+    </div>
+    <div class="analysis rs-charts">
+      <div class="chart-panel"><div class="chart-heading"><h2>Transmission against energy</h2><span><i class="line-key"></i> plane wave T(E) · <i class="dash-key"></i> this packet (σ = 20) · <i class="dot-key"></i> your runs</span></div>
+        <canvas id="rs-curve" role="img" aria-label="Transmission of the pair against energy, with the two resonances marked"></canvas>
+        <p>Transfer matrices in C · energy in units of ħ = m = 1 · Γ is the full width at half maximum, τ = ħ/Γ the lifetime</p></div>
+      <div class="chart-panel"><div class="chart-heading"><h2 id="rs-time-title">Where the probability is, over time</h2><span id="rs-time-key"><i class="line-key well-line"></i> between the walls · <i class="line-key"></i> beyond the pair · <i class="dash-key"></i> theory</span></div>
+        <canvas id="rs-time" role="img" aria-label="Probability between the barriers and beyond them against time, on a logarithmic scale"></canvas>
+        <p id="rs-time-note">Logarithmic scale: a straight falling line is an exponential decay</p></div>
+    </div>
+  </section>
   <section id="field-notes" class="field-notes"><p class="eyebrow">FIELD NOTES</p>
     <div><h2>Below the top, still through.</h2><p>The packet's mean energy (0.50) is below a barrier of 0.6, yet about a third of it comes out on the far side. Raise the barrier and the transmitted share falls quickly; lower it and most of the packet passes.</p></div>
     <div><h3>The same solver as the terminal game</h3><p>Crank–Nicolson on 3,900 points (Δx = 0.1, Δt = 0.05), solved in C and compiled to WebAssembly. JavaScript only draws and reads inputs. The painting and Hop are illustrations: Hop rests on the highest point of the density, which is not a measured particle position.</p></div>

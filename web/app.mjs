@@ -1,5 +1,6 @@
 import createWave from './physics.mjs';
 import {SCENES, UI, NAMES} from './story.mjs';
+import {startResonance} from './resonance.mjs';
 
 const $ = id => document.getElementById(id);
 const names = ['time','left','height','width','norm','meanX','pLeft','pInside','pRight','energy','theory','mode','k0','sigma','xMin','xMax','bins','done'];
@@ -102,7 +103,7 @@ window.addEventListener('blur', stop);
 // On a phone (narrow, short or touch-first screen) every canvas label is at least 14 CSS px.
 const phone = matchMedia('(max-width:720px),(max-height:500px),(pointer:coarse)');
 const textPx = desktop => phone.matches ? Math.max(14, desktop) : desktop;
-let canvasTexts = [], launched = false;
+let canvasTexts = [], launched = false, resonance = null;
 function canvasSize(canvas) {
   const bounds = canvas.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2);
   const w = Math.round(bounds.width * dpr), h = Math.round(bounds.height * dpr);
@@ -384,12 +385,12 @@ window.__tmGate = {
   scene: () => !engine ? 'loading' : story && fs.scene >= 0 ? `scene:${SCENES[fs.scene].id}` : paused ? 'paused' : 'play',
   goal: () => (launched && Boolean(state) && state.time > 0) || Boolean(story && fs && fs.night > 0),
   objective: () => story ? t$('goal') : $('launch').textContent,
-  texts: () => canvasTexts.map(row => ({...row})),
+  texts: () => canvasTexts.map(row => ({...row})).concat(resonance ? resonance.texts() : []),
   targets: () => [],
   player: () => null,
   hint: () => !engine || launched ? null : fromScene($('launch')),
 };
-phone.addEventListener('change', () => { if (engine) render(); });
+phone.addEventListener('change', () => { if (engine) render(); if (resonance) resonance.rerender(); });
 for (const img of [backdrop, hopper]) img.onload = () => { if (engine) render(); };
 new ResizeObserver(() => { if (engine) render(); }).observe(scene);
 $('height').disabled = $('left').disabled = true;
@@ -399,6 +400,8 @@ try {
   if (engine._qw_reset(0)) throw new Error('allocation');
   for (const id of ['launch', 'standard', 'half', 'story']) $(id).disabled = false;
   reset(); requestAnimationFrame(frame);
+  resonance = startResonance(engine, textPx);
+  window.rsView = resonance;
 } catch {
   $('status').textContent = 'Wave solver unavailable — reload to retry';
   $('experiment-note').textContent = 'The solver could not load. Serve the built files over HTTP with WebAssembly enabled.';

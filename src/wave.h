@@ -34,4 +34,31 @@ double packet_transmission(double k0, double sigma, double height, double width)
 /* Numerical experiment: send a packet at a barrier and return the transmitted probability. */
 double simulate_transmission(double k0, double sigma, double height, double width);
 
+/* ---- Two barriers (M2): resonant tunnelling ---- */
+
+/* Two equal rectangular barriers of `height` and `width`, the second starting `gap` after the end of
+ * the first: V = height on [left, left + width) and [left + width + gap, left + 2 width + gap).
+ * Replaces the potential. */
+void wave_set_double_barrier(Wave *w, double left, double width, double gap, double height);
+/* Probability in [from, to). */
+double wave_prob_between(const Wave *w, double from, double to);
+
+/* Exact plane-wave transmission through `layers` constant steps by transfer matrices: step i spans
+ * [edges[i], edges[i + 1]) at height heights[i]; V = 0 outside. Writes the reflection to *reflection
+ * when it is not NULL (T + R = 1). */
+double layers_transmission(double k, int layers, const double *edges, const double *heights, double *reflection);
+/* The same for the two barriers of wave_set_double_barrier (the first one starting at x = 0). */
+double double_barrier_transmission(double k, double height, double width, double gap);
+/* The transmission peak in the energy window (elo, ehi): its energy and its full width at half
+ * maximum. Returns 0 when a peak with T > 0.5 inside the window was found. */
+int double_barrier_resonance(double height, double width, double gap, double elo, double ehi,
+                             double *energy, double *fwhm);
+/* Double-barrier transmission averaged over a Gaussian packet's momenta (as packet_transmission). */
+double double_packet_transmission(double k0, double sigma, double height, double width, double gap);
+/* Numerical experiment: a packet sent at the two barriers; returns the probability beyond them. */
+double simulate_double_transmission(double k0, double sigma, double height, double width, double gap);
+/* Numerical experiment: the lowest box state put between the barriers leaks out; returns the decay
+ * rate of the probability left between them, fitted on t in [t1, t2] (theory: the width Gamma). */
+double simulate_well_decay(double height, double width, double gap, double t1, double t2);
+
 #endif

@@ -55,6 +55,33 @@ async function compareWasm() {
 }
 
 
+// The two-barrier experiment (src/resonance.c): the same samples as `./test_resonance --trace`.
+async function compareResonance() {
+  const createWave = (await import(pathToFileURL(path.resolve('dist/physics.mjs')).href)).default;
+  const engine = await createWave({wasmBinary: fs.readFileSync('dist/physics.wasm')});
+  const lines = fs.readFileSync('build/resonance-trace.csv', 'utf8').trim().split('\n');
+  const width = lines[0].split(',').length - 2, rows = lines.slice(1).map(line => line.split(',').map(Number));
+  let row = 0, maxError = 0;
+  for (let mode = 0; mode < 2; mode++) {
+    engine._rs_reset(mode);
+    if (mode === 0) engine._rs_energy(0.30);
+    for (let step = 0; step <= 2000; step += 100) {
+      const native = rows[row++];
+      assert.equal(native[0], mode); assert.equal(native[1], step);
+      const values = [...Array(width - 8).keys()].map(f => engine._rs_value(f)).concat(
+        [150, 200, 205].map(b => engine._rs_density(b)), [30, 60].map(i => engine._rs_zoom(i)), [engine._rs_curve(20), engine._rs_curve(40), engine._rs_curve_packet(20)]);
+      values.forEach((value, i) => {
+        const error = Math.abs(value - native[i + 2]) / Math.max(1, Math.abs(native[i + 2]));
+        maxError = Math.max(maxError, error);
+        assert.ok(Number.isFinite(error) && error < 1e-9, `resonance WASM/native mode=${mode} step=${step} column=${i}: ${error}`);
+      });
+      engine._rs_step(100);
+    }
+  }
+  check(row === rows.length, 'all native two-barrier samples checked');
+  return {rows: row, columns: width, maxError, tolerance: 1e-9};
+}
+
 // The story "The Far Side": play five nights through the real controls. The test reads the solver's share per dial step
 // (fw_share) only to choose a setting quickly; the page never shows it.
 async function playStory(page, choices, shots = [], tap = false) {
@@ -90,7 +117,7 @@ async function playStory(page, choices, shots = [], tap = false) {
 }
 
 async function run() {
-  const started = performance.now(), equivalence = await compareWasm();
+  const started = performance.now(), equivalence = await compareWasm(), resonanceEquivalence = await compareResonance();
   fs.mkdirSync('docs/images', {recursive: true});
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -148,6 +175,35 @@ async function run() {
   const low = await snapshot(page);
   check(low.mode === 0 && low.done && low.pRight > 0.8 && low.height === 0.3, `low barrier lets most through (${low.pRight})`);
   check(await page.locator('body').evaluate(el => el.scrollWidth <= innerWidth), 'desktop has no horizontal overflow');
+  // Two barriers: tune to the first resonance, watch the probability pile up between the walls and pass.
+  const rs = () => page.evaluate(() => window.rsView.snapshot);
+  const shoot = (target, name) => page.locator(target).screenshot({path: `docs/images/${name}.jpg`, type: 'jpeg', quality: 86});
+  let r = await rs();
+  check(r.paused && r.mode === 0 && Math.abs(r.energy - 0.3) < 1e-12 && r.e1 > 0.15 && r.e1 < 0.17 && r.e2 > 0.6 && r.e2 < 0.7, `two resonances found in C (${r.e1}, ${r.e2})`);
+  await page.locator('#rs-e1').click();
+  r = await rs();
+  check(!r.paused && r.energy === r.e1, 'the resonance button sends a packet at E1');
+  let wellPeak = 0, piled = false;
+  for (let i = 0; i < 80 && !(await rs()).done; i++) {
+    await page.clock.runFor(60); r = await rs(); wellPeak = Math.max(wellPeak, r.pWell);
+    if (!piled && r.time >= 280) {
+      piled = true; await page.locator('#rs-pause').click(); const held = (await rs()).time;
+      await shoot('#two-barriers', 'two-barriers-pileup');
+      check((await rs()).time === held && (await rs()).paused, 'the pause button holds the two-barrier run');
+      await page.locator('#rs-pause').click();
+    }
+  }
+  const onRes = await rs();
+  check(onRes.done && Math.abs(onRes.pRight / onRes.tPacket - 1) < 0.01, `on resonance the packet passes as theory says (${onRes.pRight} vs ${onRes.tPacket})`);
+  check(onRes.pRight > 0.45 && wellPeak > 0.1 && Math.abs(onRes.norm - 1) < 1e-10 && onRes.runs.length === 1, `half passes, the well filled to ${wellPeak}`);
+  await shoot('#two-barriers', 'two-barriers');
+  await page.locator('#rs-energy').fill('0.4'); await page.locator('#rs-send').click(); await page.clock.runFor(5000);
+  const offRes = await rs();
+  check(offRes.done && offRes.pRight < 0.1 && Math.abs(offRes.pRight / offRes.tPacket - 1) < 0.02 && offRes.runs.length === 2, `between the resonances little passes (${offRes.pRight})`);
+  await page.locator('#rs-release').click(); await page.clock.runFor(1200);
+  const release = await rs();
+  check(release.mode === 1 && release.done && release.pWell < 0.05 && release.pWell > 0.001, `the trapped wave leaks out (${release.pWell} left at t = ${release.time})`);
+  await shoot('#two-barriers', 'two-barriers-release');
   await page.getByRole('link', {name: 'How it works'}).click();
   check(page.url().endsWith('#field-notes'), 'field notes link');
 
@@ -216,6 +272,12 @@ async function run() {
   check(size.canvas >= 14, `390x844: smallest canvas text ${size.canvas}px`);
   check(await mobile.evaluate(() => window.__tmGate.goal()), 'the hook reports the launch');
   await mobile.evaluate(() => scrollTo(0, 0)); await capture(mobile, 'mobile');
+  // Two barriers by touch, then the same legibility checks over the section.
+  await mobile.locator('#rs-e1').tap(); await mobile.clock.runFor(1500);
+  check((await mobile.evaluate(() => window.rsView.snapshot)).time > 100, 'touch sends the two-barrier packet');
+  size = await mobile.evaluate(sizes);
+  check(size.dom >= 14 && size.canvas >= 14, `390x844 with two barriers: text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
+  await mobile.locator('#two-barriers').screenshot({path: 'docs/images/two-barriers-mobile.jpg', type: 'jpeg', quality: 86});
   await mobile.setViewportSize({width: 844, height: 390}); await mobile.clock.runFor(100);
   size = await mobile.evaluate(sizes);
   check(size.dom >= 14 && size.canvas >= 14, `844x390: smallest text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
@@ -262,9 +324,11 @@ async function run() {
   await broken.close();
   check(normalErrors.length === 0, `console/page errors ${normalErrors.join(';')}`);
   check(external.length === 0, 'no external requests');
-  const result = {checks, seconds: (performance.now() - started) / 1000, equivalence, errors: normalErrors.length, externalRequests: external.length,
+  const result = {checks, seconds: (performance.now() - started) / 1000, equivalence, resonanceEquivalence, errors: normalErrors.length, externalRequests: external.length,
     standard: {pRight: standard.pRight, theory: standard.theory, norm: standard.norm, time: standard.time},
     half: {height: half.height, pRight: half.pRight, theory: half.theory}, low: {height: low.height, pRight: low.pRight},
+    twoBarriers: {e1: onRes.e1, g1: onRes.g1, e2: onRes.e2, g2: onRes.g2, onResonance: {pRight: onRes.pRight, theory: onRes.tPacket, wellPeak, time: onRes.time},
+      offResonance: {energy: offRes.energy, pRight: offRes.pRight, theory: offRes.tPacket}, release: {pWell: release.pWell, time: release.time}},
     screenshots: fs.readdirSync('docs/images').filter(file => file.endsWith('.jpg')).sort()};
   fs.writeFileSync('docs/validation.json', JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 }

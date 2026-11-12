@@ -12,6 +12,7 @@ Why the program is correct, from the repository alone: every law, formula and nu
 2. [The numerical scheme: Crank–Nicolson](02-crank-nicolson.md) — unitarity, the tridiagonal solve, second-order accuracy, stationary states, the hard walls
 3. [The program: the experiment on screen](03-program.md) — the standard experiment, the half-through demonstration, from the wave function to the picture
 4. [The story: The Far Side](04-story.md) — the share the story may not change, shots and seals, battery and hours, scenes and choices, the bench
+5. [Two barriers: resonant tunnelling](05-double-barrier.md) — transfer matrices, the resonance condition, the Breit–Wigner line, width and lifetime, the packet experiment and its limits, the second experiment on screen
 
 ## How the pieces depend on each other
 
@@ -41,6 +42,17 @@ flowchart TD
     S16 --> S18["S18 scenes, choices, quiet heavy scenes"]
     S17 --> S19["S19 the story bench"]
     S18 --> S19
+    S05 --> S20["S20 transfer matrices"]
+    S04 --> S20
+    S20 --> S21["S21 resonance condition (Fabry–Pérot)"]
+    S21 --> S22["S22 Breit–Wigner line"]
+    S22 --> S23["S23 width = 1 / lifetime"]
+    S07 --> S23
+    S06 --> S24["S24 packet experiment and limits"]
+    S21 --> S24
+    S03 --> S24
+    S23 --> S25["S25 the two-barrier experiment on screen"]
+    S24 --> S25
 ```
 
 ## Coverage: statement → page → figure → code → test
@@ -66,6 +78,12 @@ flowchart TD
 | S17 | Battery and hours | [4](04-story.md) | mermaid | `src/farside.c#farside_charge`, `src/farside.c#farside_settle` | `tests/test_farside.c#[mech] radio`, `tests/test_farside.c#[mech] letter`, `tests/test_farside.c#[mech] dark` |
 | S18 | Scenes at fixed progress points, two choices, quiet heavy scenes | [4](04-story.md) | mermaid | `src/farside.c#farside_answer`, `src/farside.c#farside_options`, `src/farside.c#farside_heavy`, `src/farside.c#farside_ending`, `src/farside.c#farside_hint` | `tests/test_farside.c#[order]`, `tests/test_farside.c#[quiet] letter`, `tests/test_farside.c#[choice]` |
 | S19 | The story bench: each scene's effect, tension, seeds | [4](04-story.md) | mermaid | `tests/story_bench.c#write_all`, `tests/farside_policy.h#op_decide`, `tests/farside_run.h#run_nights` | `tests/story_bench.c#all run seeds distinct`, `tests/test_farside.c#[beat]` |
+| S20 | Transfer matrices for a potential made of steps; T + R = 1 | [5](05-double-barrier.md) | `figures/layers.svg` | `src/wave.c#layers_transmission`, `src/wave.c#local_k`, `src/wave.c#double_barrier_transmission` | `tests/test_wave.c#test_layers_reduce_to_single_barrier` |
+| S21 | Two barriers: Fabry–Pérot sum and the resonance condition | [5](05-double-barrier.md) | `figures/double.svg` | `src/wave.c#double_barrier_transmission`, `src/wave.c#double_barrier_resonance` | `tests/test_wave.c#test_double_barrier_matches_fabry_perot`, `tests/test_wave.c#test_resonances_transmit_fully` |
+| S22 | Breit–Wigner line near a resonance | [5](05-double-barrier.md) | `figures/breit-wigner.svg` | `src/wave.c#double_barrier_resonance` | `tests/test_wave.c#test_breit_wigner_near_resonance` |
+| S23 | Width and lifetime, τ = ħ/Γ | [5](05-double-barrier.md) | `figures/decay.svg` | `src/wave.c#simulate_well_decay`, `src/wave.c#wave_prob_between` | `tests/test_wave.c#test_lifetime_matches_width` |
+| S24 | Packets at two barriers; the numerical limits | [5](05-double-barrier.md) | `figures/packet-resonance.svg` | `src/wave.c#double_packet_transmission`, `src/wave.c#simulate_double_transmission`, `src/wave.c#wave_set_double_barrier` | `tests/test_wave.c#test_double_barrier_packet_matches_theory` |
+| S25 | The two-barrier experiment on screen | [5](05-double-barrier.md) | `figures/rs-demo.svg`, mermaid | `src/resonance.c#rs_reset`, `src/resonance.c#rs_energy`, `src/resonance.c#rs_launch`, `src/resonance.c#rs_step`, `src/resonance.c#rs_value`, `src/resonance.c#rs_density`, `src/resonance.c#rs_zoom`, `src/resonance.c#rs_curve`, `src/resonance.c#rs_curve_packet`, `src/main.c#resonance` | `tests/test_resonance.c#test_packet_on_resonance`, `tests/test_resonance.c#test_well_release`, `tests/test_resonance.c#test_controls_are_clamped` |
 
 Tests named `tests/theory_figs.c#…` are measurements recorded in [figures/values.md](figures/values.md) by `make theory-figs`, not assertions of `make test`. S03, S04, S08, S09, S11 and S13 are covered only that way; turning them into assertions is a follow-up.
 
@@ -83,6 +101,6 @@ What the measurements made visible (none of it is changed here):
 
 ## Reading the source against this table
 
-Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/farside.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
+Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/resonance.h`, `src/farside.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
 
-The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages. Page 4 was added with the story layer (`src/farside.c`), which leaves the solver unchanged too.
+The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages. Page 4 was added with the story layer (`src/farside.c`), which leaves the solver unchanged too. Page 5 was added with the two-barrier experiment: it adds functions to `src/wave.c` and the adapter `src/resonance.c`, and leaves the existing functions, outputs and figures byte for byte unchanged.
