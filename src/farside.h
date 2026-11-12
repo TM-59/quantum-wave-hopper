@@ -11,7 +11,8 @@
  * the solver computes for that height: P(x > barrier) after the observer's full run (qw_value(QW_P_RIGHT)), the same
  * number the observatory shows. The story never changes that probability. It changes only how many particles a shot
  * sends, the battery, the hours a night takes, whether Agnes reads the counter again before a seal, and what an empty
- * battery costs. A seal is checked against the solver's share: outside the band it fails (a failure). */
+ * battery costs. A seal is checked against the solver's share: outside the band it fails (a failure).
+ * An empty battery costs hours (the generator, or after the line is cut the sun on the panels), not a failure. */
 
 enum { F_NIGHTS = 5, F_STEPS = 31 };   /* dial steps 0..30, height = step x 0.05 */
 
@@ -98,6 +99,8 @@ double farside_target(int night);
 double farside_tol(int night);
 /* 1 while Agnes reads the counter a second time before a seal. */
 int farside_second_reading(const Farside *c);
+/* How long the copper takes to settle after a shot, relative to a warm dome on a full line. */
+double farside_settle(const Farside *c);
 /* Charge the battery gets at the start of a night (shots). */
 double farside_charge(const Farside *c, int night);
 double farside_value(const Farside *c, int field);

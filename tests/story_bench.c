@@ -41,7 +41,8 @@ static void play_row(char *buf, size_t cap, int i, const RunResult *r)
 
 static void ablation_row(char *buf, size_t cap, int i, const RunResult *r)
 {
-    snprintf(buf, cap, "{\"seed\": \"%d\", \"hours\": %.2f, \"failures\": %d, \"red\": %d}", i, r->hours, r->failures, r->red);
+    snprintf(buf, cap, "{\"seed\": \"%d\", \"hours\": %.2f, \"failures\": %d, \"shots\": %d, \"empties\": %d, \"red\": %d}",
+             i, r->hours, r->failures, r->shots, r->blackouts + r->dark_waits, r->red);
 }
 
 static void tension_row(char *buf, size_t cap, int i, int run, const RunResult *r)
@@ -174,7 +175,9 @@ static int write_all(const char *dir)
                "the other at its default. The share of each particle found on the far side is the solver's in every arm. Do not edit by hand.\",\n", GEN, ABLATION_SEEDS);
     fprintf(f, "  \"metrics\": {\n"
                "    \"hours\": {\"better\": \"lower\", \"kind\": \"outcome\", \"felt\": \"screen\", \"label\": \"hours the five nights took (shown on the night card): shots, seals, failed checks, the stove, the generator and waiting for the sun\"},\n"
-               "    \"failures\": {\"better\": \"lower\", \"kind\": \"outcome\", \"felt\": \"screen\", \"label\": \"failures (counted on screen): a seal the check rejected, or an empty battery while the line still stood (the generator)\"},\n"
+               "    \"failures\": {\"better\": \"lower\", \"kind\": \"outcome\", \"felt\": \"screen\", \"label\": \"failures (counted on screen): a seal the check rejected\"},\n"
+               "    \"shots\": {\"better\": \"lower\", \"kind\": \"outcome\", \"felt\": \"screen\", \"label\": \"shots fired over the five nights (counted on screen); each one takes a shot of battery\"},\n"
+               "    \"empties\": {\"better\": \"lower\", \"kind\": \"outcome\", \"felt\": \"screen\", \"label\": \"times the battery ran empty (banner on screen): an hour on the generator while the line stood, five hours in the dark waiting for the sun after it was cut\"},\n"
                "    \"red\": {\"better\": \"lower\", \"kind\": \"resource\", \"felt\": \"resource\", \"label\": \"shots fired with the battery in the red (below 3 shots left)\"}\n"
                "  },\n  \"effects\": {\n    \"on\": [\n");
     write_rows(f, "      ", ab, ARM_ON);
@@ -201,7 +204,7 @@ static int write_all(const char *dir)
     f = open_out(dir, "tension.json");
     fprintf(f, "{\n  \"version\": 1,\n  \"generator\": \"%s\",\n  \"policy\": \"%s\",\n", GEN, POLICY);
     fprintf(f, "  \"crisis\": \"a shot fired with the battery in the red (below 3 shots left), an empty battery, or a failure (a failure counts as a crisis)\",\n"
-               "  \"failure\": \"a seal the check rejected, or an empty battery while the line still stood (an hour on the generator)\",\n"
+               "  \"failure\": \"a seal the check rejected (the setting let too many or too few through)\",\n"
                "  \"segments\": [\"night 1: half\", \"night 2: a quarter\", \"night 3: seven in ten\", \"night 4: one in eight\", \"night 5: half, alone\"],\n"
                "  \"note\": \"%d seeds x %d runs; every run has its own stirred seed; the path comes from the run number.\",\n  \"seeds\": [\n",
             TENSION_SEEDS, TENSION_RUNS);

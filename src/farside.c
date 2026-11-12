@@ -13,18 +13,23 @@
 #define RED_LINE 2.0           /* a shot that leaves less than this in the battery is fired in the red */
 #define BASE_CHARGE 8.0        /* at dusk the line charges the battery up to this many shots (never drains it) */
 #define START_POWER 0.0        /* the battery at the first dusk, before the line charges it */
-#define GEN_WAIT 1.0           /* an empty battery before the line is cut: the generator, an hour, a failure */
+#define GEN_WAIT 1.0           /* an empty battery before the line is cut: an hour on the generator */
 #define GEN_POWER 3.0
 #define SUN_WAIT 5.0           /* an empty battery after the line is cut: sit in the dark until the sun is on the panels */
 #define SUN_POWER 3.0
-#define BASE_PARTICLES 16      /* the dome's own counter */
+#define BASE_PARTICLES 12      /* the dome's own counter */
 
 #define DUSK_PARTICLES 60      /* FE_DUSK: Agnes's copper counter */
-#define STOVE_FACTOR 2         /* FE_STOVE: a cold counter in nights 2-3 hears half the particles */
+#define STOVE_FACTOR 3         /* FE_STOVE: a cold counter in nights 2-3 hears a third of the particles */
 #define STOVE_HOURS 1.0        /* FE_STOVE: an hour of stoking before the counter stops drifting */
 #define RADIO_BATTERY 4.0      /* FE_RADIO: the institute's battery, on top of the charge of night 3 */
 #define LETTER_CHARGE 4.0      /* FE_LETTER: the line charges only up to this from night 3 */
 #define CELL_POWER 6.0         /* FE_CELLS: the counter's cells, added at the start of night 5 */
+#define CELL_FACTOR 3          /* FE_CELLS: without its cells the counter hears a third of the particles */
+#define RADIO_SETTLE 0.5       /* FE_RADIO: the battery runs the heater in night 3; the copper settles in half the time */
+#define LETTER_SETTLE 2.0      /* FE_LETTER: the line at half voltage from night 3; the copper takes twice as long to settle */
+#define DARK_SETTLE 2.0        /* FE_DARK: no heater in night 5; twice as long again */
+#define DARK_DRAIN 0.25        /* FE_DARK: the cold takes three quarters of the battery before the fifth night starts */
 
 /* Each night's band of far-side share: Agnes's targets. */
 static const double TARGET[F_NIGHTS] = {0.50, 0.25, 0.70, 0.13, 0.50};
@@ -87,12 +92,21 @@ static double draw(const Farside *c, uint64_t kind, uint64_t a, uint64_t b)
     return to_unit(z + (b + 1u) * 0x8cb92ba72f3d8dd7ULL);
 }
 
+double farside_settle(const Farside *c)
+{
+    double f = 1.0;
+    if (c->night == 2 && on(c, FE_RADIO)) f *= RADIO_SETTLE;
+    if (c->night >= 2 && on(c, FE_LETTER)) f *= LETTER_SETTLE;
+    if (c->night == 4 && on(c, FE_DARK)) f *= DARK_SETTLE;
+    return f;
+}
+
 int farside_particles(const Farside *c)
 {
     int n = on(c, FE_DUSK) ? DUSK_PARTICLES : BASE_PARTICLES;
     /* The frost: a cold counter misses particles in nights 2-3 unless the stove warms it. */
     if (c->frost == 1 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2)) n /= STOVE_FACTOR;
-    if (c->cells == 1 && on(c, FE_CELLS) && c->night == 4) n /= 3;
+    if (c->cells == 1 && on(c, FE_CELLS) && c->night == 4) n /= CELL_FACTOR;
     return n;
 }
 
@@ -142,6 +156,7 @@ static void start_night(Farside *c)
     memset(c->ruled, 0, sizeof c->ruled);
     memset(c->doubt, 0, sizeof c->doubt);
     c->last_n = c->last_k = 0;
+    if (c->night == 4 && on(c, FE_DARK)) c->power *= DARK_DRAIN;
     c->power = fmax(c->power, farside_charge(c, c->night));
     if (c->night == 2 && on(c, FE_RADIO)) c->power += RADIO_BATTERY;
     if (c->night == 4 && c->cells == 1 && on(c, FE_CELLS)) c->power += CELL_POWER;
@@ -210,7 +225,8 @@ int farside_fire(Farside *c)
             c->hours += GEN_WAIT;
             c->power = GEN_POWER;
             c->blackouts++;
-            fail(c, FB_BLACKOUT);
+            c->crisis_night[c->night] = 1;
+            c->banner = FB_BLACKOUT;
         }
         return 2;
     }
@@ -219,7 +235,7 @@ int farside_fire(Farside *c)
     if (c->power < RED_LINE - 1e-9) { c->red++; c->crisis_night[c->night] = 1; }
     int n = farside_particles(c);
     count(c, n);
-    c->hours += SHOT_HOURS + PARTICLE_HOURS * n + SETTLE_HOURS * draw(c, 2, (uint64_t)c->shots, 0);
+    c->hours += SHOT_HOURS + PARTICLE_HOURS * n + SETTLE_HOURS * farside_settle(c) * draw(c, 2, (uint64_t)c->shots, 0);
     return 0;
 }
 
@@ -231,7 +247,9 @@ int farside_seal(Farside *c)
     c->hours += SEAL_HOURS;
     if (farside_second_reading(c)) {
         /* Agnes taps the counter twice and reads it again (no battery: her counter's own cell). */
-        count(c, farside_particles(c));
+        int n = farside_particles(c);
+        count(c, n);
+        c->hours += PARTICLE_HOURS * n;
         double p = (double)c->tally_k[step] / c->tally_n[step];
         if (p < lo || p > hi) {
             /* A near miss: a crisis, not a failure. */

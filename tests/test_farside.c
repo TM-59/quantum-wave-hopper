@@ -175,7 +175,8 @@ int main(void)
     farside_answer(&c, 0); farside_answer(&c, 0);
     CHECK(farside_second_reading(&c), "[mech] fall off: Agnes still reads in night 5");
 
-    /* [mech] dark: no charge for night 5; an empty battery waits for the sun (no failure) instead of the generator. */
+    /* [mech] dark: the cold drains the battery and there is no charge for night 5; an empty battery waits for the sun
+     * (five hours) instead of an hour on the generator; the copper settles twice as slowly. */
     start(&c, &p, FE_ALL, FS_DARK, 1, 0, 6);
     farside_answer(&c, 0);
     CHECK(farside_charge(&c, 4) == 0.0, "[mech] dark: charge %.1f", farside_charge(&c, 4));
@@ -185,7 +186,7 @@ int main(void)
     start(&c, &p, FE_ALL & ~FE_DARK, FS_DARK, 1, 0, 6);
     farside_answer(&c, 0);
     c.power = 0.0; h = c.hours; f0 = c.failures; r = farside_fire(&c);
-    CHECK(r == 2 && c.failures == f0 + 1 && fabs(c.hours - h - 1.0) < 1e-9 && c.banner == FB_BLACKOUT, "[mech] dark off: generator");
+    CHECK(r == 2 && c.failures == f0 && fabs(c.hours - h - 1.0) < 1e-9 && c.banner == FB_BLACKOUT, "[mech] dark off: an hour on the generator");
 
     /* [quiet] The heavy scenes open with no banner, and no "sealed" banner is raised before the next action. */
     int quiet[3];
