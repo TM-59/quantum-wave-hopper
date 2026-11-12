@@ -24,6 +24,7 @@ export const UI = {
     hidden: 'The solver’s share is not shown in the story: you only see what the counter counts.',
     summary: (h, f) => `Five nights: ${h.toFixed(2)} hours, ${f} failure${f === 1 ? '' : 's'}.`,
     restart: 'Play it again', toObservatory: 'Back to the observatory',
+    chart: 'Tonight’s shots', chartNote: 'Each dot is one shot: the share the counter found on the far side, at the height written under it. The band is tonight’s.',
   },
   ja: {
     lang: 'English', langLabel: '物語を英語に切り替える',
@@ -47,6 +48,7 @@ export const UI = {
     hidden: '物語ではソルバの割合は見せない。見えるのは計数器が数えたものだけ。',
     summary: (h, f) => `五つの夜: ${h.toFixed(2)} 時間、失敗 ${f} 回。`,
     restart: 'もう一度遊ぶ', toObservatory: '観測所に戻る',
+    chart: '今夜の一発ごと', chartNote: '点は一発ずつ: 計数器が向こう側で見つけた割合。下の数字はそのときの高さ。帯は今夜の幅。',
   },
 };
 
@@ -87,6 +89,8 @@ export const SCENES = [
                 ja: '朝のトラックで電池を送ります。ここだけの話、ドームは残ると思いますよ。'}],
     ['agnes', {en: 'Did you hear that, Hop? Keep the dome. Put the record on. The one with the scratch. We have earned the scratch.',
                ja: '聞いたかい、ホップ。ドームを残すって。レコードをかけな。傷のあるやつ。あの傷くらいは聞いていい夜だ。'}],
+    ['agnes', {en: 'And tomorrow we run the heater off the new battery. Warm copper settles quick.',
+               ja: '明日の夜は新しい電池でヒーターを回そう。温まった銅は落ち着くのが早い。'}],
     ['agnes', {en: 'Good thing we fed the stove. New books start on Friday.', ja: 'ストーブに食わせてよかったね。新しい日誌は金曜から始めりゃいい。'}, 'burned'],
     ['agnes', {en: "Next year's settings go in the same book as last year's.", ja: '来年の設定は、去年と同じ日誌に書こう。'}, 'kept']],
     options: [{en: 'Fetch the battery', ja: '電池を取りに行く'}]},
@@ -95,8 +99,8 @@ export const SCENES = [
           ja: '電池と一緒に手紙が届く。アグネスは立ったまま読み、座ってもう一度読む。'}],
     ['agnes', {en: 'They want the counter. My copper counter. The calibration is its paperwork. It sells better with five clean nights on it.',
                ja: '欲しいのは計数器だ。わたしの銅の計数器。較正はその添え書きさ。きれいな五晩がついていれば高く売れる。'}],
-    ['agnes', {en: "The dome comes down in spring. From tonight the line company charges the battery halfway. And you're on their list, Hop. 'Maintenance unit. Not required.'",
-               ja: 'ドームは春に取り壊し。今夜から電力会社は電池を半分しか充電しない。お前も一覧に載ってるよ、ホップ。「保守機。不要」。'}],
+    ['agnes', {en: "The dome comes down in spring. From tonight the line company charges the battery halfway, and the line hums at half voltage. The copper will crawl. And you're on their list, Hop. 'Maintenance unit. Not required.'",
+               ja: 'ドームは春に取り壊し。今夜から電力会社は電池を半分しか充電しないし、線は半分の電圧でうなるだけだ。銅は這うようにしか落ち着かない。お前も一覧に載ってるよ、ホップ。「保守機。不要」。'}],
     ['agnes', {en: "Thirty-one years on this ridge. Calibrate it anyway. I won't hand them a sloppy number.",
                ja: 'この尾根で三十一年だ。それでも較正しな。いい加減な数字を渡すのはごめんだよ。'}]],
     options: [{en: 'Go on to the third night', ja: '三つ目の夜へ'}]},
@@ -114,6 +118,8 @@ export const SCENES = [
   {id: 'dark', title: {en: 'The line goes dead', ja: '線が死ぬ'}, heavy: true, lines: [
     ['', {en: 'At dusk the line goes dead. The dome’s lamps go out one at a time, the far ones first.',
           ja: '夕暮れに線が死ぬ。ドームの灯りがひとつずつ消えていく。遠いほうから。'}],
+    ['', {en: 'The cold has already taken most of the battery. No heater. The copper settles slower than it ever has.',
+          ja: '寒さが電池のほとんどをもう持っていった。ヒーターもない。銅はこれまでになく、ゆっくりとしか落ち着かない。'}],
     ['', {en: 'There is the battery, and the counter, and nobody to read it twice.',
           ja: '残ったのは電池と計数器だけで、二度読んでくれる人はいない。'}],
     ['hop', {en: "Odds aren't promises.", ja: '確率は約束じゃない。'}]],

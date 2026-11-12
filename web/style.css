@@ -73,4 +73,34 @@ body{font-size:16px}
 .experiment button{display:flex}
 .control-note,.experiment p:last-child,.field-notes p:not(.eyebrow){line-height:1.7}
 }
+/* The story "The Far Side": a reading panel over the observation, the night's readouts, banners. */
+.top-actions{display:flex;align-items:center;gap:16px}#lang{min-height:44px;font-size:12px;padding:6px 12px;white-space:nowrap;flex:none}
+#story-scene{position:absolute;inset:12px;overflow:auto;background:#10142cf2;border:1px solid #ffffff2e;border-radius:6px;padding:18px 22px}
+#story-scene .eyebrow{color:var(--muted);margin:0 0 6px}#story-scene h2{font-size:24px;margin:0 0 12px}
+#story-text p{font-size:14px;line-height:1.65;margin:0 0 9px}#story-text b{color:var(--accent);font-weight:600;margin-right:4px}
+#story-text b.hop{color:var(--warm)}#story-text b.corvin{color:#c9cfe3}#story-text .narration{color:#c9cfe3;font-style:italic}
+#story-text .note{color:var(--muted);border-top:1px solid var(--line);padding-top:9px}#story-text .summary{color:var(--barrier)}
+#story-options{display:flex;flex-direction:column;gap:8px;margin-top:12px}#story-options button{text-align:left;font-size:13px}
+#story-options .primary{font-size:13px}
+#story-scene.heavy{background:#05060ef7;border-color:#ffffff14}#story-scene.heavy h2{color:#c9cfe3}#story-scene.heavy #story-text p{color:#aab3c9}
+#story-scene.ending{background:#1a1830f2;border-color:#f0e4c855}
+#banner{position:absolute;right:18px;top:18px;padding:10px 15px;background:var(--accent);color:#08121c;font-size:12px;font-weight:700;border-radius:4px;max-width:60%}
+#banner[data-kind=fail]{background:#d55e00;color:#fff}#banner[data-kind=wait]{background:#c9cfe3;color:#12162b}
+.story-data{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 0;padding:4px 8px 18px;border-top:1px solid var(--line)}
+.story-data>div{padding:12px 17px 0;border-right:1px solid var(--line)}.story-data>div:nth-child(3n){border:0}
+.story-data span{display:block;font-size:9px;letter-spacing:1.4px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.story-data strong{font:24px var(--serif);font-variant-numeric:tabular-nums}.story-data .small-strong{font-size:16px}
+.story-data small{font-size:10px;color:var(--muted);margin-left:5px}
+.story-data .bar{display:block;height:5px;background:#2f3866;border-radius:3px;margin-top:7px;overflow:hidden}
+.story-data .bar b{display:block;height:100%;background:var(--accent)}.story-data [data-red=true] .bar b{background:#d55e00}
+#s-notes{grid-column:1/-1;margin:4px 17px 0;font-size:11px;line-height:1.6;color:var(--muted)}
+.seal{margin-top:8px;background:var(--warm);border-color:var(--warm)}.seal:hover{background:#f2b83a}
+.story-note{font-size:10px;line-height:1.6;color:var(--muted);margin:10px 0}
+body[data-mode=story] .telemetry,body[data-mode=story] #standard,body[data-mode=story] #half,body[data-mode=story] #experiment-note,body[data-mode=story] .secondary-actions,body[data-mode=story] #chart-key{display:none}
+@media(max-width:720px),(max-height:500px),(pointer:coarse){
+#story-scene{position:static;max-height:none;border-radius:0;border-width:1px 0 0}
+#story-text p,#story-options button,#story-options .primary,.story-data span,.story-data small,#s-notes,.story-note,#banner,#lang{font-size:14px;letter-spacing:.3px}
+.story-data{grid-template-columns:repeat(2,1fr)}.story-data>div{border:0}
+#banner{position:static;max-width:none;border-radius:0}
+}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}

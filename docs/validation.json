@@ -1,6 +1,6 @@
 {
-  "checks": 40,
-  "seconds": 23.44757012,
+  "checks": 75,
+  "seconds": 71.54378231899999,
   "equivalence": {
     "rows": 102,
     "columns": 25,
@@ -22,7 +22,7 @@
   },
   "low": {
     "height": 0.3,
-    "pRight": 0.8269939020498946
+    "pRight": 0.8269939020498953
   },
   "screenshots": [
     "before-terminal.jpg",
@@ -30,6 +30,17 @@
     "mobile.jpg",
     "observatory.jpg",
     "split-complete.jpg",
-    "splitting.jpg"
+    "splitting.jpg",
+    "story-dark.jpg",
+    "story-dawn-cells.jpg",
+    "story-dawn-whole.jpg",
+    "story-dusk.jpg",
+    "story-fall.jpg",
+    "story-frost.jpg",
+    "story-ja.jpg",
+    "story-letter.jpg",
+    "story-mobile.jpg",
+    "story-night.jpg",
+    "story-radio.jpg"
   ]
 }

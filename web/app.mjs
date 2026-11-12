@@ -1,4 +1,5 @@
 import createWave from './physics.mjs';
+import {SCENES, UI, NAMES} from './story.mjs';
 
 const $ = id => document.getElementById(id);
 const names = ['time','left','height','width','norm','meanX','pLeft','pInside','pRight','energy','theory','mode','k0','sigma','xMin','xMax','bins','done'];
@@ -13,10 +14,19 @@ const notes = [
   'The height is found by bisection on the exact barrier formula so that theory gives 50 %. The solver is not told the answer. Controls are locked during the experiment.'
 ];
 let engine, state, paused = true, last = 0, accumulator = 0, samples = [], density = [], real = [];
+// The story (mode 3): the C nights of src/farside.c. Field names follow enum FarsideValue in src/farside.h.
+const storyNames = ['night','scene','power','hours','shots','red','failures','dial','height','particles','lastN','lastK','poolN','poolK',
+  'target','tol','hint','agnes','banner','loud','heavy','ending','frost','cells','redLine','ruled','line','charge','darkWaits'];
+const STORY_STEPS = 60;   // solver steps per tick while a shot's packet is shown (3,300 steps in under a second)
+let story = false, fs = null, shownScene = -2, heavyLog = [], shotLog = [], animating = false;
+let lang = new URLSearchParams(location.search).get('lang') === 'ja' ? 'ja' : 'en';
+const t$ = key => UI[lang][key];
+const readStory = () => Object.fromEntries(storyNames.map((name, i) => [name, engine._fw_value(i)]));
 const read = () => Object.fromEntries(names.map((name, i) => [name, engine._qw_value(i)]));
-const goalReached = () => state.done && Math.abs(state.pRight - 0.5) < 0.02;
+const goalReached = () => !story && state.done && Math.abs(state.pRight - 0.5) < 0.02;
 
 function pull() {
+  if (story) fs = readStory();
   state = read();
   const n = state.bins;
   density = Array.from({length: n}, (_, i) => engine._qw_density(i));
@@ -26,34 +36,47 @@ function syncControls() {
   $('height').value = state.height; $('left').value = state.left;
   $('height-value').textContent = state.height.toFixed(2);
   $('left-value').textContent = state.left.toFixed(0);
-  const locked = state.mode !== 0;
-  $('height').disabled = $('left').disabled = locked;
+  const locked = story ? fs.scene >= 0 || fs.night >= 5 || animating : state.mode !== 0;
+  $('height').disabled = locked; $('left').disabled = locked || story;
   document.querySelectorAll('[data-height]').forEach(button => button.disabled = locked);
 }
 function reset(mode = 0, run = false) {
-  engine._qw_reset(mode);
+  story = mode === 3; animating = false; shownScene = -2; heavyLog = []; shotLog = [];
+  document.body.dataset.mode = story ? 'story' : 'observe';
+  if (story) {
+    const seed = Number(new URLSearchParams(location.search).get('seed')) || Math.floor(Math.random() * 2147483647);
+    engine._fw_reset(seed); engine._qw_reset(0); engine._qw_controls(0, engine._fw_value(8));
+  } else engine._qw_reset(mode);
   pull(); paused = !run; accumulator = 0; samples = [{time: 0, pRight: state.pRight}];
-  render();
+  showScene(); render();
 }
 function launch() {
   launched = true;
   if (!engine) return;
+  if (story) return fire();
   if (state.mode !== 0) engine._qw_reset(0); else engine._qw_launch();
   pull(); samples = [{time: 0, pRight: state.pRight}]; paused = false; accumulator = 0; render();
 }
 function controls(left, height) {
   if (!engine) return;
+  if (story) {
+    if (fs.scene >= 0 || animating) return;
+    engine._fw_dial(Math.round(height / 0.05)); fs = readStory(); left = 0; height = fs.height;
+  }
   engine._qw_controls(left, height);
   pull(); render();
 }
 function togglePause() {
-  if (!engine || state.done) return;
+  if (!engine || state.done || story) return;
   paused = !paused; accumulator = 0; render();
 }
 $('launch').onclick = launch;
 $('pause').onclick = togglePause;
 $('standard').onclick = () => reset(1, true);
 $('half').onclick = () => reset(2, true);
+$('story').onclick = () => reset(3);
+$('seal').onclick = () => seal();
+$('lang').onclick = () => { lang = lang === 'en' ? 'ja' : 'en'; shownScene = -2; if (engine) { showScene(); render(); } else applyLang(); };
 $('height').oninput = event => controls(state.left, Number(event.target.value));
 $('left').oninput = event => controls(Number(event.target.value), state.height);
 document.querySelectorAll('[data-height]').forEach(button => {
@@ -62,12 +85,13 @@ document.querySelectorAll('[data-height]').forEach(button => {
 document.addEventListener('keydown', event => {
   if (!engine || event.ctrlKey || event.metaKey || event.altKey || event.target.matches('input,textarea,select')) return;
   const key = event.key.toLowerCase();
-  if (![' ', 'w', 's', 'a', 'd', 'p'].includes(key)) return;
+  if (![' ', 'w', 's', 'a', 'd', 'p', 'e'].includes(key)) return;
   event.preventDefault();
-  if (event.repeat && (key === ' ' || key === 'p')) return;
+  if (event.repeat && (key === ' ' || key === 'p' || key === 'e')) return;
   if (key === ' ') return launch();
+  if (key === 'e') return seal();
   if (key === 'p') return togglePause();
-  if (state.mode) return;
+  if (state.mode && !story) return;
   const dh = key === 'w' ? 0.05 : key === 's' ? -0.05 : 0, dl = key === 'd' ? 2 : key === 'a' ? -2 : 0;
   controls(state.left + dl, Math.round((state.height + dh) * 100) / 100);
 });
@@ -91,6 +115,120 @@ function cover(ctx, img, w, h) {
   ctx.drawImage(img, (w - img.naturalWidth * scale) / 2, (h - img.naturalHeight * scale) / 2, img.naturalWidth * scale, img.naturalHeight * scale);
 }
 const binX = i => state.xMin + i + 0.5;   // 10 grid points of 0.1 per bin
+
+
+// ------------------------------------------------------------------ the story: shots, seals, scenes and readouts
+function fire() {
+  if (!story || fs.scene >= 0 || fs.night >= 5 || animating) return;
+  const result = engine._fw_fire();
+  fs = readStory();
+  if (result === 0) {
+    shotLog.push({night: fs.night, dial: fs.dial, k: fs.lastK, n: fs.lastN});
+    // The shot's packet, on the observatory's own solver at the dial's height: the wave carries the odds.
+    engine._qw_reset(0); engine._qw_controls(0, fs.height); engine._qw_launch();
+    animating = true; paused = false; accumulator = 0;
+  }
+  pull(); samples = [{time: 0, pRight: state.pRight}]; render();
+}
+function seal() {
+  if (!story || fs.scene >= 0 || fs.night >= 5 || animating) return;
+  engine._fw_seal();
+  pull(); showScene(); render();
+}
+function applyLang() {
+  document.documentElement.lang = lang;
+  $('lang').textContent = t$('lang'); $('lang').lang = lang === 'en' ? 'ja' : 'en'; $('lang').setAttribute('aria-label', t$('langLabel'));
+  $('story-label').textContent = t$('storyButton'); $('story-eyebrow').textContent = t$('storyEyebrow'); $('story-note').textContent = t$('storyNote');
+  for (const [id, key] of [['l-battery', 'battery'], ['l-hours', 'hours'], ['l-failures', 'failures'], ['l-band', 'band'], ['l-last', 'lastShot'], ['l-pool', 'pooled']]) $(id).textContent = t$(key);
+  $('u-power').textContent = t$('shots'); $('u-hours').textContent = t$('h'); $('seal-label').textContent = t$('seal');
+}
+function storyLines(sc) {
+  if (sc.endings) return sc.endings[fs.ending === 1 ? 1 : 0].map(words => ['', words]);
+  return sc.lines.filter(([, , when]) => !when || (when === 'burned') === (fs.frost === 0));
+}
+function showScene() {
+  const box = $('story-scene'), index = story && fs ? fs.scene : -1;
+  if (index === shownScene) return;
+  shownScene = index;
+  if (index < 0) { box.hidden = true; return; }
+  const sc = SCENES[index];
+  box.hidden = false;
+  box.className = sc.heavy ? 'heavy' : sc.endings ? 'ending' : '';
+  box.dataset.scene = sc.id;
+  if (sc.heavy) heavyLog.push({id: sc.id, banner: fs.banner, loud: fs.loud, bannerShown: !$('banner').hidden});
+  $('story-night').textContent = fs.night < 5 ? t$('night')(fs.night + 1, t$('nights')[fs.night]) : '';
+  $('story-title').textContent = sc.title[lang];
+  const text = $('story-text');
+  text.replaceChildren();
+  for (const [who, words] of storyLines(sc)) {
+    const p = document.createElement('p');
+    if (who) { const b = document.createElement('b'); b.textContent = NAMES[lang][who]; b.className = who; p.append(b, ' '); }
+    else p.className = 'narration';
+    p.append(words[lang]);
+    text.append(p);
+  }
+  if (sc.endings) { const p = document.createElement('p'); p.className = 'summary'; p.textContent = t$('summary')(fs.hours, fs.failures); text.append(p); }
+  if (sc.note) { const p = document.createElement('p'); p.className = 'note'; p.textContent = sc.note[lang]; text.append(p); }
+  const options = $('story-options');
+  options.replaceChildren();
+  const labels = sc.endings ? [{en: UI.en.restart, ja: UI.ja.restart}] : sc.options;
+  labels.forEach((label, option) => {
+    const button = document.createElement('button');
+    button.textContent = label[lang];
+    if (!option) button.className = 'primary';
+    button.onclick = () => answer(option);
+    options.append(button);
+  });
+  if (sc.endings) {
+    const back = document.createElement('button');
+    back.textContent = t$('toObservatory'); back.onclick = () => reset(0);
+    options.append(back);
+  }
+  $('banner').hidden = true;
+  box.scrollTop = 0;
+  options.firstChild.focus({preventScroll: true});
+}
+function answer(option) {
+  if (!story || fs.scene < 0) return;
+  if (SCENES[fs.scene].endings) { reset(3); return; }
+  engine._fw_answer(option);
+  pull(); showScene();
+  engine._qw_controls(0, fs.height); pull();
+  render();
+}
+function storyStatus() {
+  if (fs.night >= 5) return SCENES[6].title[lang];
+  const name = t$('night')(fs.night + 1, t$('nights')[fs.night]);
+  if (animating) return `${name} · V = ${fs.height.toFixed(2)}`;
+  if (fs.ruled) return `${name} · ${fs.ruled > 0 ? t$('ruledHigh') : t$('ruledLow')}`;
+  return name;
+}
+function renderStory() {
+  $('s-power').textContent = fs.power.toFixed(fs.power % 1 ? 2 : 0);
+  $('story-data').firstElementChild.dataset.red = String(fs.power < fs.redLine);
+  $('power-bar').style.width = `${Math.min(100, fs.power / 10 * 100)}%`;
+  $('s-hours').textContent = fs.hours.toFixed(2);
+  $('s-failures').textContent = String(fs.failures);
+  const lo = Math.round((fs.target - fs.tol) * 100), hi = Math.round((fs.target + fs.tol) * 100);
+  $('s-band').textContent = t$('bandText')(lo, hi);
+  $('s-last').textContent = t$('shot')(fs.lastK, fs.lastN);
+  $('s-pool').textContent = t$('pool')(fs.poolK, fs.poolN);
+  const notes = [fs.agnes ? t$('agnesOn') : t$('agnesOff'), `${t$('line')}: ${fs.line ? t$('lineOn') : t$('lineOff')}`, t$('hidden')];
+  if (fs.hint >= 0 && fs.night < 5) notes.unshift(t$('hint')(fs.hint * 0.05));
+  $('s-notes').textContent = notes.join(' · ');
+  const banner = $('banner'), kind = fs.banner;
+  banner.textContent = t$('banners')[kind] || '';
+  banner.dataset.kind = kind >= 3 && kind <= 4 ? 'fail' : kind >= 5 ? 'wait' : 'ok';
+  // A scene on screen always hides the banner; the C nights also clear it when a heavy scene opens.
+  banner.hidden = !kind || fs.scene >= 0;
+  document.querySelector('.scene-label').hidden = fs.scene >= 0;
+  $('launch-label').textContent = t$('fire');
+  $('launch').setAttribute('aria-label', t$('fire'));
+  $('seal').setAttribute('aria-label', t$('seal'));
+  const busy = fs.scene >= 0 || fs.night >= 5 || animating;
+  $('launch').disabled = busy;
+  $('seal').disabled = busy || !fs.poolN;
+}
 
 function drawScene() {
   const {ctx, w, h} = canvasSize(scene);
@@ -153,6 +291,7 @@ function drawScene() {
   }
 }
 function drawPlot() {
+  if (story) return drawShots();
   const {ctx, w, h} = canvasSize(plot), small = textPx(9), left = 44, right = 14, top = small + 11, bottom = small + 21, tMax = 165;
   canvasTexts = canvasTexts.filter(row => row.text !== 'chart labels').concat({text: 'chart labels', px: small});
   const X = t => left + t / tMax * (w - left - right), Y = p => top + (1 - p) * (h - top - bottom);
@@ -169,25 +308,59 @@ function drawPlot() {
   ctx.strokeStyle = '#56b4e9'; ctx.lineWidth = 2; ctx.beginPath();
   samples.forEach((s, i) => { i ? ctx.lineTo(X(s.time), Y(s.pRight)) : ctx.moveTo(X(s.time), Y(s.pRight)); }); ctx.stroke();
 }
+/* The story's chart: tonight's shots, each the share the counter found on the far side, against tonight's band. */
+function drawShots() {
+  const {ctx, w, h} = canvasSize(plot), small = textPx(9), left = 44, right = 14, top = small + 11, bottom = small + 21;
+  canvasTexts = canvasTexts.filter(row => row.text !== 'chart labels').concat({text: 'chart labels', px: small});
+  const night = Math.min(fs.night, 4), shots = shotLog.filter(row => row.night === night), count = Math.max(10, shots.length);
+  const X = i => left + (i + 0.5) / count * (w - left - right), Y = p => top + (1 - p) * (h - top - bottom);
+  ctx.clearRect(0, 0, w, h); ctx.font = `${small}px system-ui`; ctx.lineWidth = 1;
+  ctx.fillStyle = '#e69f0033'; ctx.fillRect(left, Y(fs.target + fs.tol), w - left - right, Y(fs.target - fs.tol) - Y(fs.target + fs.tol));
+  ctx.textAlign = 'right';
+  for (const p of [0, 0.25, 0.5, 0.75, 1]) {
+    ctx.strokeStyle = '#2f3866'; ctx.beginPath(); ctx.moveTo(left, Y(p)); ctx.lineTo(w - right, Y(p)); ctx.stroke();
+    ctx.fillStyle = '#aab3c9'; ctx.fillText(`${p * 100}`, left - 8, Y(p) + 3);
+  }
+  ctx.textAlign = 'left'; ctx.fillText(lang === 'ja' ? '通過 [%]' : 'through [%]', 4, top - 7);
+  ctx.textAlign = 'right'; ctx.fillText(lang === 'ja' ? '今夜の一発ごと · 帯 = 今夜の幅' : "tonight's shots · band = tonight's band", w - right, h - 2);
+  shots.forEach((row, i) => {
+    ctx.fillStyle = '#56b4e9'; ctx.beginPath(); ctx.arc(X(i), Y(row.k / row.n), 5, 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = '#c9cfe3'; ctx.textAlign = 'center'; ctx.fillText((row.dial * 0.05).toFixed(2), X(i), h - bottom + small + 4);
+  });
+}
 function render() {
-  $('mode-name').textContent = modeNames[state.mode];
+  $('story-data').hidden = !story; $('seal').hidden = !story;
+  if (story) renderStory();
+  else {
+    $('banner').hidden = true; document.querySelector('.scene-label').hidden = false;
+    $('launch-label').textContent = 'Launch the packet'; $('launch').removeAttribute('aria-label'); $('launch').disabled = !engine;
+  }
+  applyLang();
+  $('mode-name').textContent = story ? t$('mode') : modeNames[state.mode];
+  $('chart-title').textContent = story ? t$('chart') : 'How much has tunnelled';
+  $('plot-note').textContent = story ? t$('chartNote') : 'Time in units of ħ/E · the dashed line is the exact barrier formula averaged over the packet\'s momenta';
   $('clock').textContent = `t = ${state.time.toFixed(1)}`;
   $('tr').textContent = (state.pRight * 100).toFixed(1);
   $('re').textContent = (state.pLeft * 100).toFixed(1);
   $('th').textContent = (state.theory * 100).toFixed(1);
   $('norm').textContent = state.norm.toFixed(6);
   let label;
-  if (state.done) label = goalReached() ? `Split complete · ${(state.pRight * 100).toFixed(1)} % through — that is half` : `Split complete · ${(state.pRight * 100).toFixed(1)} % through`;
+  if (story) label = storyStatus();
+  else if (state.done) label = goalReached() ? `Split complete · ${(state.pRight * 100).toFixed(1)} % through — that is half` : `Split complete · ${(state.pRight * 100).toFixed(1)} % through`;
   else if (paused) label = state.time ? 'Paused' : 'Ready to launch';
   else if (state.meanX < state.left - 25 && state.pRight < 0.005) label = 'The packet is on its way';
   else label = 'Meeting the barrier';
   $('status').textContent = label;
   $('goal').hidden = !goalReached();
   $('pause').textContent = paused ? 'Resume' : 'Pause';
-  $('pause').disabled = !engine || state.done || (!state.time && paused);
-  $('experiment-note').textContent = notes[state.mode];
+  $('pause').disabled = !engine || story || state.done || (!state.time && paused);
+  $('experiment-note').textContent = notes[story ? 0 : state.mode];
+  if (story) { $('tr').textContent = $('re').textContent = $('th').textContent = '—'; }
   syncControls(); drawScene(); drawPlot();
-  window.qwView = {snapshot: {...state, paused, goal: goalReached(), artReady: Boolean(backdrop.naturalWidth && hopper.naturalWidth), samples: samples.length}, engine};
+  window.qwView = {snapshot: {...state, paused, goal: goalReached(), artReady: Boolean(backdrop.naturalWidth && hopper.naturalWidth), samples: samples.length,
+    story, fs: story ? {...fs} : null, animating, sceneId: story && fs.scene >= 0 ? SCENES[fs.scene].id : null,
+    sceneText: $('story-scene').hidden ? '' : $('story-text').textContent, bannerShown: !$('banner').hidden,
+    heavyLog: heavyLog.map(row => ({...row})), shots: shotLog.length, lang}, engine};
 }
 function frame(timestamp) {
   if (!last) last = timestamp;
@@ -196,10 +369,10 @@ function frame(timestamp) {
     accumulator += dt;
     let moved = false;
     while (accumulator >= TICK && !state.done) {
-      engine._qw_step(STEPS_PER_TICK); accumulator -= TICK; moved = true;
+      engine._qw_step(story ? STORY_STEPS : STEPS_PER_TICK); accumulator -= TICK; moved = true;
       state = read(); samples.push({time: state.time, pRight: state.pRight});
     }
-    if (moved) { pull(); if (state.done) paused = true; render(); }
+    if (moved) { pull(); if (state.done) { paused = true; animating = false; } render(); }
   }
   requestAnimationFrame(frame);
 }
@@ -208,9 +381,9 @@ const fromScene = el => { const c = scene.getBoundingClientRect(), r = el.getBou
 window.__tmGate = {
   version: 1,
   get logical() { const r = scene.getBoundingClientRect(); return {w: r.width || 1, h: r.height || 1}; },
-  scene: () => !engine ? 'loading' : paused ? 'paused' : 'play',
-  goal: () => launched && Boolean(state) && state.time > 0,
-  objective: () => $('launch').textContent,
+  scene: () => !engine ? 'loading' : story && fs.scene >= 0 ? `scene:${SCENES[fs.scene].id}` : paused ? 'paused' : 'play',
+  goal: () => (launched && Boolean(state) && state.time > 0) || Boolean(story && fs && fs.night > 0),
+  objective: () => story ? t$('goal') : $('launch').textContent,
   texts: () => canvasTexts.map(row => ({...row})),
   targets: () => [],
   player: () => null,
@@ -224,7 +397,7 @@ document.querySelectorAll('[data-height]').forEach(button => button.disabled = t
 try {
   engine = await createWave();
   if (engine._qw_reset(0)) throw new Error('allocation');
-  for (const id of ['launch', 'standard', 'half']) $(id).disabled = false;
+  for (const id of ['launch', 'standard', 'half', 'story']) $(id).disabled = false;
   reset(); requestAnimationFrame(frame);
 } catch {
   $('status').textContent = 'Wave solver unavailable — reload to retry';

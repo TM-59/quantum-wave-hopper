@@ -101,7 +101,7 @@ static const char *GEN = "tests/story_bench.c (make story)";
 static const char *POLICY =
     "An operator who reads the panel, not the code: each night it starts at the setting written in the kept logbooks, "
     "or at a hunch two steps either side of the nearest setting; it fires, pools the shots fired at one setting, and seals "
-    "when the pooled share is within 0.6-1.4 x the band's half width of the target, loosening by a quarter with every further "
+    "when the pooled share is within 0.7-1.6 x the band's half width of the target, loosening by a quarter with every further "
     "shot there; otherwise it turns the dial one step toward the target, re-reads the closer of two settings that point at "
     "each other, and never re-seals a setting the check rejected. It does not wait for a full battery and does not know "
     "the solver's share. Its hand comes from the run's own stirred seed, re-drawn per night. Choices follow the path field.";

@@ -53,7 +53,7 @@ static double mean_metric(unsigned effects, int frost, int cells, int which)
     for (int i = 0; i < ABLATION_SEEDS; i++) {
         RunResult r;
         run_nights(ablation_key(i), effects, frost, cells, &r);
-        s += which == 0 ? r.hours : r.failures;
+        s += which == 0 ? r.hours : which == 1 ? r.failures : which == 2 ? r.shots : r.blackouts + r.dark_waits;
     }
     return s / ABLATION_SEEDS;
 }
@@ -114,7 +114,7 @@ int main(void)
     farside_init(&c, FE_ALL, 1); farside_answer(&c, 0);
     CHECK(farside_particles(&c) == 60 && farside_second_reading(&c), "[mech] dusk on: %d particles", farside_particles(&c));
     farside_init(&c, FE_ALL & ~FE_DUSK, 1); farside_answer(&c, 0);
-    CHECK(farside_particles(&c) == 16 && !farside_second_reading(&c), "[mech] dusk off: %d particles", farside_particles(&c));
+    CHECK(farside_particles(&c) == 12 && !farside_second_reading(&c), "[mech] dusk off: %d particles", farside_particles(&c));
     {
         /* Her second reading: a seal she reads outside the band is refused ("not yet"), with no failure. */
         farside_init(&c, FE_ALL, 3); farside_answer(&c, 0);
@@ -128,16 +128,16 @@ int main(void)
         CHECK(r == 3 && c.failures == 1 && c.banner == FB_TOO_MANY, "[mech] dusk off, the check fails: %d", r);
     }
 
-    /* [mech] frost: burning the logbooks warms the counter for nights 2-3 and costs an hour of stoking each;
-     * keeping them puts last year's settings on the panel for nights 4 and 5. */
+    /* [mech] frost: the cold counter hears a third of the particles in nights 2-3; burning the logbooks warms it and
+     * costs an hour of stoking each night; keeping them puts last year's settings on the panel for nights 4 and 5. */
     start(&c, &p, FE_ALL, FS_FROST, 0, 0, 2);
     double h = c.hours;
     farside_answer(&c, 0);
-    CHECK(farside_particles(&c) == 120 && fabs(c.hours - h - 1.0) < 1e-9 && farside_hint(&c) < 0, "[mech] frost burn: %d particles", farside_particles(&c));
+    CHECK(farside_particles(&c) == 60 && fabs(c.hours - h - 1.0) < 1e-9 && farside_hint(&c) < 0, "[mech] frost burn: %d particles", farside_particles(&c));
     start(&c, &p, FE_ALL, FS_FROST, 1, 0, 2);
     h = c.hours;
     farside_answer(&c, 1);
-    CHECK(farside_particles(&c) == 60 && fabs(c.hours - h) < 1e-9, "[mech] frost keep: %d particles", farside_particles(&c));
+    CHECK(farside_particles(&c) == 20 && fabs(c.hours - h) < 1e-9, "[mech] frost keep: %d particles", farside_particles(&c));
     start(&c, &p, FE_ALL, FS_FALL, 1, 0, 2);
     CHECK(c.night == 4, "[mech] frost keep: the fall opens after night 4");
     farside_answer(&c, 0); farside_answer(&c, 0);
@@ -182,7 +182,7 @@ int main(void)
     CHECK(farside_charge(&c, 4) == 0.0, "[mech] dark: charge %.1f", farside_charge(&c, 4));
     c.power = 0.0; h = c.hours;
     int f0 = c.failures, r = farside_fire(&c);
-    CHECK(r == 2 && c.failures == f0 && fabs(c.hours - h - 3.0) < 1e-9 && c.banner == FB_SUN, "[mech] dark: empty battery");
+    CHECK(r == 2 && c.failures == f0 && fabs(c.hours - h - 5.0) < 1e-9 && c.banner == FB_SUN && farside_settle(&c) == 4.0, "[mech] dark: empty battery");
     start(&c, &p, FE_ALL & ~FE_DARK, FS_DARK, 1, 0, 6);
     farside_answer(&c, 0);
     c.power = 0.0; h = c.hours; f0 = c.failures; r = farside_fire(&c);
@@ -218,12 +218,14 @@ int main(void)
         CHECK(fabs(bh - on_h) >= 0.05 * on_h || fabs(bf - on_f) >= 0.05 * on_f, "[beat] %s: hours %.2f vs %.2f, failures %.2f vs %.2f",
               beat_id[i], bh, on_h, bf, on_f);
     }
-    /* [choice] Each path of each choice is better on one outcome: burning wins failures, keeping wins hours;
-     * the whole counter wins failures, its cells win hours. */
-    double burn_h = mean_metric(FE_ALL, 0, DEFAULT_CELLS, 0), burn_f = mean_metric(FE_ALL, 0, DEFAULT_CELLS, 1);
-    CHECK(burn_f < on_f && burn_h > on_h, "[choice] frost: burn %.2f h %.2f f, keep %.2f h %.2f f", burn_h, burn_f, on_h, on_f);
-    double cell_h = mean_metric(FE_ALL, DEFAULT_FROST, 1, 0), cell_f = mean_metric(FE_ALL, DEFAULT_FROST, 1, 1);
-    CHECK(cell_h < on_h && cell_f > on_f, "[choice] fall: cells %.2f h %.2f f, whole %.2f h %.2f f", cell_h, cell_f, on_h, on_f);
+    /* [choice] Neither path of a choice wins everything. Burning the logbooks takes fewer shots, keeping them fewer
+     * hours; the whole counter takes fewer shots, its cells fewer hours and fewer empty batteries. */
+    double on_s = mean_metric(FE_ALL, DEFAULT_FROST, DEFAULT_CELLS, 2), on_e = mean_metric(FE_ALL, DEFAULT_FROST, DEFAULT_CELLS, 3);
+    double burn_h = mean_metric(FE_ALL, 0, DEFAULT_CELLS, 0), burn_s = mean_metric(FE_ALL, 0, DEFAULT_CELLS, 2);
+    CHECK(burn_s < on_s && burn_h > on_h, "[choice] frost: burn %.2f h %.2f shots, keep %.2f h %.2f shots", burn_h, burn_s, on_h, on_s);
+    double cell_h = mean_metric(FE_ALL, DEFAULT_FROST, 1, 0), cell_s = mean_metric(FE_ALL, DEFAULT_FROST, 1, 2), cell_e = mean_metric(FE_ALL, DEFAULT_FROST, 1, 3);
+    CHECK(cell_h < on_h && cell_e < on_e && cell_s > on_s, "[choice] fall: cells %.2f h %.2f shots %.2f empty, whole %.2f h %.2f shots %.2f empty",
+          cell_h, cell_s, cell_e, on_h, on_s, on_e);
 
     /* [tension] Every bench run finishes. */
     int done = 0;
