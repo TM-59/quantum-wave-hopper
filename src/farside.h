@@ -44,7 +44,7 @@ enum { FB_NONE, FB_SEALED, FB_NOT_YET, FB_TOO_MANY, FB_TOO_FEW, FB_BLACKOUT, FB_
 
 typedef struct {
     unsigned effects;
-    uint64_t seed, rng;
+    uint64_t seed;        /* the counter's draws are addressed by (seed, night, dial step, particle number) */
     int night;            /* 0..4; F_NIGHTS when the five nights are over */
     int scene;            /* FS_* open now, or FS_NONE */
     int frost;            /* -1 until chosen; 0 = burn the logbooks, 1 = keep them */

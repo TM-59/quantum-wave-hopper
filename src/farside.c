@@ -75,10 +75,16 @@ static uint64_t mix64(uint64_t z)
     return z ^ (z >> 31);
 }
 
-static double unit(Farside *c)
+static double to_unit(uint64_t z) { return (double)(mix64(z) >> 11) / 9007199254740992.0; }
+
+/* Draws are addressed, not streamed: the i-th particle sent at one dial step in one night always gets the same draw,
+ * whatever happened before. Two runs that reach the same setting see the same particles (common random numbers). */
+static double draw(const Farside *c, uint64_t kind, uint64_t a, uint64_t b)
 {
-    c->rng += 0x9e3779b97f4a7c15ULL;
-    return (double)(mix64(c->rng) >> 11) / 9007199254740992.0;
+    uint64_t z = mix64(c->seed + kind * 0x632be59bd9b4e019ULL);
+    z = mix64(z + (uint64_t)(c->night + 1) * 0x9e3779b97f4a7c15ULL);
+    z = mix64(z + (a + 1u) * 0xd1b54a32d192ed03ULL);
+    return to_unit(z + (b + 1u) * 0x8cb92ba72f3d8dd7ULL);
 }
 
 int farside_particles(const Farside *c)
@@ -106,7 +112,7 @@ static int count(Farside *c, int n)
 {
     double p = farside_transmission(c->dial);
     int k = 0;
-    for (int i = 0; i < n; i++) k += unit(c) < p;
+    for (int i = 0; i < n; i++) k += draw(c, 1, (uint64_t)c->dial, (uint64_t)(c->tally_n[c->dial] + i)) < p;
     c->tally_n[c->dial] += n;
     c->tally_k[c->dial] += k;
     c->last_n = n;
@@ -136,8 +142,6 @@ static void start_night(Farside *c)
     memset(c->ruled, 0, sizeof c->ruled);
     memset(c->doubt, 0, sizeof c->doubt);
     c->last_n = c->last_k = 0;
-    /* Every night draws from its own stream, so a choice changes the nights it touches and not, by chance, every later one. */
-    c->rng = mix64(mix64(c->seed + 0x2545f4914f6cdd1dULL) + (uint64_t)(c->night + 1) * 0x9e3779b97f4a7c15ULL);
     c->power = fmax(c->power, farside_charge(c, c->night));
     if (c->night == 2 && on(c, FE_RADIO)) c->power += RADIO_BATTERY;
     if (c->night == 4 && c->cells == 1 && on(c, FE_CELLS)) c->power += CELL_POWER;
@@ -149,7 +153,6 @@ void farside_init(Farside *c, unsigned effects, uint64_t seed)
     memset(c, 0, sizeof *c);
     c->effects = effects;
     c->seed = seed;
-    c->rng = mix64(seed + 0x2545f4914f6cdd1dULL);
     c->frost = c->cells = -1;
     c->agnes = 1;
     c->power = START_POWER;
@@ -216,7 +219,7 @@ int farside_fire(Farside *c)
     if (c->power < RED_LINE - 1e-9) { c->red++; c->crisis_night[c->night] = 1; }
     int n = farside_particles(c);
     count(c, n);
-    c->hours += SHOT_HOURS + PARTICLE_HOURS * n + SETTLE_HOURS * unit(c);
+    c->hours += SHOT_HOURS + PARTICLE_HOURS * n + SETTLE_HOURS * draw(c, 2, (uint64_t)c->shots, 0);
     return 0;
 }
 
