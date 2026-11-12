@@ -11,3 +11,4 @@ theory_figs
 test_farside
 story_bench
 .story-check/
+test_resonance

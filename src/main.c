@@ -64,6 +64,41 @@ static int headless(const char *dir)
     return 0;
 }
 
+/* Two barriers (height 1, width 1, gap 4): T(E) by transfer matrices and averaged over packets,
+ * plus simulated packets at nine energies (resonance.csv). */
+static int resonance(const char *dir)
+{
+    char path[512];
+    enum { N = 391 };
+    static float e[N], tp[N], t20[N], t10[N];
+    for (int i = 0; i < N; i++) {
+        double en = 0.02 + 0.002 * i, k = sqrt(2.0 * en);
+        e[i] = (float)en;
+        tp[i] = (float)double_barrier_transmission(k, 1.0, 1.0, 4.0);
+        t20[i] = (float)double_packet_transmission(k, 20.0, 1.0, 1.0, 4.0);
+        t10[i] = (float)double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0);
+    }
+    snprintf(path, sizeof path, "%s/resonance.svg", dir);
+    Series s[] = {{"plane wave", tp, "#1f77b4"}, {"packet sigma 20", t20, "#d62728"}, {"packet sigma 10", t10, "#2ca02c"}};
+    if (svg_plot(path, "Two barriers (V = 1, width 1, gap 4): resonant tunnelling", "energy E", "T", e, N, s, 3)) return 1;
+    double e1, g1, e2, g2;
+    if (double_barrier_resonance(1.0, 1.0, 4.0, 0.01, 1.0, &e1, &g1) ||
+        double_barrier_resonance(1.0, 1.0, 4.0, e1 + 3.0 * g1, 1.0, &e2, &g2)) return 1;
+    snprintf(path, sizeof path, "%s/resonance.csv", dir);
+    FILE *csv = fopen(path, "w");
+    if (!csv) return 1;
+    fprintf(csv, "E,T_plane,T_packet_sigma10,T_simulated_sigma10\n");
+    double es[9] = {0.08, 0.12, e1, 0.20, 0.30, 0.45, e2, 0.70, 0.80};
+    for (int i = 0; i < 9; i++) {
+        double k = sqrt(2.0 * es[i]);
+        fprintf(csv, "%.6f,%.5f,%.5f,%.5f\n", es[i], double_barrier_transmission(k, 1.0, 1.0, 4.0),
+                double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0), simulate_double_transmission(k, 10.0, 1.0, 1.0, 4.0));
+    }
+    fclose(csv);
+    printf("resonances: E1 %.5f (width %.5f, lifetime %.1f), E2 %.5f (width %.5f, lifetime %.2f)\n", e1, g1, 1.0 / g1, e2, g2, 1.0 / g2);
+    return 0;
+}
+
 static int snapshot(void)
 {
     Wave w;
@@ -169,6 +204,7 @@ int main(int argc, char **argv)
 {
     if (argc > 1 && strcmp(argv[1], "--headless") == 0) return headless(argc > 2 ? argv[2] : ".");
     if (argc > 1 && strcmp(argv[1], "--snapshot") == 0) return snapshot();
+    if (argc > 1 && strcmp(argv[1], "--resonance") == 0) return resonance(argc > 2 ? argv[2] : ".");
     if (argc > 1 && strcmp(argv[1], "--gif") == 0) return gif_demo(argc > 2 ? argv[2] : "demo.gif");
     return play();
 }

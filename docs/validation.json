@@ -1,10 +1,16 @@
 {
-  "checks": 75,
-  "seconds": 71.54378231899999,
+  "checks": 103,
+  "seconds": 112.27289191800001,
   "equivalence": {
     "rows": 102,
     "columns": 25,
     "maxError": 6.235012506294879e-13,
+    "tolerance": 1e-9
+  },
+  "resonanceEquivalence": {
+    "rows": 42,
+    "columns": 37,
+    "maxError": 7.186344852527782e-10,
     "tolerance": 1e-9
   },
   "errors": 0,
@@ -24,6 +30,27 @@
     "height": 0.3,
     "pRight": 0.8269939020498953
   },
+  "twoBarriers": {
+    "e1": 0.15815141254176135,
+    "g1": 0.01732069260743979,
+    "e2": 0.6375805406440869,
+    "g2": 0.1539823326664589,
+    "onResonance": {
+      "pRight": 0.5026447477277787,
+      "theory": 0.5013355059734005,
+      "wellPeak": 0.3739721036795994,
+      "time": 822.6500000000001
+    },
+    "offResonance": {
+      "energy": 0.4,
+      "pRight": 0.05115227585424876,
+      "theory": 0.05099017106846973
+    },
+    "release": {
+      "pWell": 0.028495700538941456,
+      "time": 200
+    }
+  },
   "screenshots": [
     "before-terminal.jpg",
     "half-through.jpg",
@@ -41,6 +68,10 @@
     "story-letter.jpg",
     "story-mobile.jpg",
     "story-night.jpg",
-    "story-radio.jpg"
+    "story-radio.jpg",
+    "two-barriers-mobile.jpg",
+    "two-barriers-pileup.jpg",
+    "two-barriers-release.jpg",
+    "two-barriers.jpg"
   ]
 }

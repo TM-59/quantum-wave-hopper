@@ -60,3 +60,37 @@ Units: hbar = m = 1. The last column is the relative error; where the theory col
 | `manual-clamp` | time after one call asking for 5000 steps (theory 400 x 0.05: one call is clamped) | 20 | 20 | 0.00e+00 |
 | `manual-launch` | time after qw_launch (theory 0: a fresh packet) | 0 | 0 | 0.00e+00 |
 | `manual-real` | qw_real in the bin just right of the packet centre over the square root of qw_density there: the bin centre is 0.5 from the packet centre (theory cos(k0 x 0.5)) | 0.87765896 | 0.87758256 | 8.71e-05 |
+| `layers-single` | largest difference between one transfer-matrix layer and the closed-form barrier formula, V = 0.6, width 2, 300 energies (theory 0) | 1.1270024e-10 | 0 | 1.13e-10 |
+| `layers-sum` | largest |T + R - 1| for that layer (theory 0: the current is conserved) | 4.0880832e-10 | 0 | 4.09e-10 |
+| `layers-sum-5` | largest |T + R - 1| for an uneven stack of five layers, 200 energies (theory 0) | 1.5396215e-09 | 0 | 1.54e-09 |
+| `layers-gap0` | largest difference between two barriers of width 1 with no gap and one barrier of width 2 (theory 0) | 1.4482726e-10 | 0 | 1.45e-10 |
+| `fp-diff` | largest difference between the transfer matrices and the Fabry-Perot closed form for two barriers (V = 1, width 1, gap 4), 599 energies (theory 0) | 4.1078252e-15 | 0 | 4.11e-15 |
+| `res-e1` | first resonance energy, the peak of T found by double_barrier_resonance (theory: below the lowest box level pi^2 / (2 L^2) = 0.3084) | 0.15815141 | 0.30842514 | 4.87e-01 |
+| `res-e2` | second resonance energy (box level 2 pi^2 / L^2 = 1.2337) | 0.63758054 | 1.2337006 | 4.83e-01 |
+| `res-t1` | T at the first resonance (theory 1: a symmetric pair transmits fully) | 1 | 1 | 2.44e-15 |
+| `res-t2` | T at the second resonance (theory 1) | 1 | 1 | 6.66e-16 |
+| `res-phase1` | round-trip phase 2 arg r0 + 2 k L at the first resonance, reduced to (-pi, pi] (theory 0) | 1.2947135e-09 | 0 | 1.29e-09 |
+| `res-phase2` | the same at the second resonance (theory 0) | 9.4550297e-09 | 0 | 9.46e-09 |
+| `res-dark` | T of the pair at E = 0.30, between the resonances, against one barrier alone | 0.030181941 | 0.2773855 | 8.91e-01 |
+| `res-asym` | highest T of an uneven pair (widths 1 and 1.5) near the first resonance (theory: below 1) | 0.65625186 | 1 | 3.44e-01 |
+| `bw-gap-1` | largest |T - Lorentzian| within one width of the first resonance, barriers 1 wide (Gamma / E1 = 0.11) | 0.045408955 | 0 | 4.54e-02 |
+| `bw-gap-15` | the same with barriers 1.5 wide (Gamma / E1 = 0.029) | 0.013313577 | 0 | 1.33e-02 |
+| `bw-width-15` | width Gamma of that narrower line | 0.0047373465 | 0 | 4.74e-03 |
+| `bw-ratio` | ratio of the two gaps against the ratio of Gamma / E1 (theory: the gap is first order in Gamma / E1) | 0.29319277 | 0.26436331 | 1.09e-01 |
+| `decay-rate` | decay rate of the probability between the barriers, fitted on t in [30, 180], grid dx 0.05 (theory: the width Gamma of the first resonance) | 0.01710131 | 0.017320693 | 1.27e-02 |
+| `decay-lifetime` | lifetime 1 / rate (theory hbar / Gamma) | 58.475052 | 57.734412 | 1.28e-02 |
+| `decay-early` | probability still between the barriers at t = 30 (the part of the box state that is not the resonance leaves first) | 0.52494595 | 0 | 5.25e-01 |
+| `gamma-semiclassical` | the classical estimate hbar v T1 / (2 L): speed sqrt(2 E1) over the round trip 2 L = 8, times one barrier's T at E1 (theory: Gamma, to order of magnitude) | 0.011008808 | 0.017320693 | 3.64e-01 |
+| `dpacket-worst` | largest relative gap between simulated packets (sigma 10) and the packet-averaged transfer matrices over 19 energies where T > 0.01 | 0.0037616781 | 0 | 3.76e-03 |
+| `dpacket-e1` | simulated packet sigma 10 sent at E1 (theory: the packet average, not 1) | 0.30864522 | 0.30844464 | 6.50e-04 |
+| `dpacket-e1-20` | the packet average at E1 for sigma 20 (the browser's packet) | 0.50133551 | 0 | 5.01e-01 |
+| `dpacket-e1-40` | the packet average at E1 for sigma 40 | 0.71711181 | 0 | 7.17e-01 |
+| `dpacket-spread` | energy spread k0 / (2 sigma) of the sigma 10 packet at E1, against the width Gamma | 0.028120403 | 0.017320693 | 6.24e-01 |
+| `dpacket-grid` | energy of the wave k1 on the browser's grid (dx 0.1) against E1: the grid's shift of the resonance | 0.15810973 | 0.15815141 | 2.64e-04 |
+| `rs-right` | browser experiment at E1: probability beyond the pair at the end (theory: the packet average for sigma 20) | 0.50264475 | 0.50133551 | 2.61e-03 |
+| `rs-time` | time at which that run stopped (the well had emptied below 1e-5 or the fast side neared the wall) | 822.65 | 0 | 8.23e+02 |
+| `rs-well-peak` | largest probability held between the barriers during that run | 0.37566032 | 0 | 3.76e-01 |
+| `rs-norm` | largest departure of the norm from 1 during that run (theory 0) | 7.0099482e-13 | 0 | 7.01e-13 |
+| `rs-off` | the same experiment at E = 0.40, between the resonances (theory: the packet average) | 0.051152276 | 0.050990171 | 3.18e-03 |
+| `rs-release` | browser 'release from the well' run on its grid (dx 0.1): decay rate fitted on [30, 200] (theory Gamma) | 0.017131596 | 0.017320693 | 1.09e-02 |
+| `rs-clamp` | energy after asking for 9 (theory 0.75: clamped) | 0.75 | 0.75 | 0.00e+00 |
