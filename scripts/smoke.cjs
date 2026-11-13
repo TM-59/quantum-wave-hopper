@@ -82,6 +82,43 @@ async function compareResonance() {
   return {rows: row, columns: width, maxError, tolerance: 1e-9};
 }
 
+// The double slit (src/slits.c): the same samples as `./test_slits --trace`, image bytes included.
+async function compareSlits() {
+  const createWave = (await import(pathToFileURL(path.resolve('dist/physics.mjs')).href)).default;
+  const engine = await createWave({wasmBinary: fs.readFileSync('dist/physics.wasm')});
+  const lines = fs.readFileSync('build/slits-trace.csv', 'utf8').trim().split('\n');
+  const fields = lines[0].split(',').filter(c => /^f\d+$/.test(c)).length, rows = lines.slice(1).map(line => line.split(',').map(Number));
+  let row = 0, maxError = 0, maxImage = 0;
+  for (let mode = 0; mode < 4; mode++) {
+    engine._sl_reset(mode); engine._sl_seed(3);
+    for (;;) {
+      engine._sl_measure();
+      const ptr = engine._sl_image(), bytes = engine.HEAPU8.subarray(ptr, ptr + 256 * 256 * 4);
+      let sum = 0; for (const b of bytes) sum += b;
+      const native = rows[row++];
+      assert.equal(native[0], mode); assert.equal(native[1], engine._sl_value(12));
+      const values = [...Array(fields).keys()].map(f => engine._sl_value(f));
+      const tail = [engine._sl_screen(50), engine._sl_screen(100), engine._sl_screen(150), engine._sl_screen_theory(100), engine._sl_screen_ideal(100), engine._sl_particle(0), engine._sl_particle(1)];
+      values.forEach((value, i) => {
+        const error = Math.abs(value - native[i + 2]) / Math.max(1, Math.abs(native[i + 2]));
+        maxError = Math.max(maxError, error);
+        assert.ok(Number.isFinite(error) && error < 1e-9, `slits WASM/native mode=${mode} row=${row} field=${i}: ${error}`);
+      });
+      tail.forEach((value, i) => {
+        const ref = native[fields + 3 + i], error = Math.abs(value - ref) / Math.max(1, Math.abs(ref));
+        maxError = Math.max(maxError, error);
+        assert.ok(Number.isFinite(error) && error < 1e-9, `slits WASM/native mode=${mode} row=${row} tail=${i}: ${error}`);
+      });
+      maxImage = Math.max(maxImage, Math.abs(sum - native[fields + 2]));
+      assert.ok(Math.abs(sum - native[fields + 2]) <= 64, `slits image bytes mode=${mode} row=${row}: ${sum} vs ${native[fields + 2]}`);
+      if (engine._sl_value(10)) break;
+      engine._sl_step(50);
+    }
+  }
+  check(row === rows.length, 'all native double-slit samples checked');
+  return {rows: row, columns: fields + 8, maxError, tolerance: 1e-9, maxImageByteSum: maxImage};
+}
+
 // The story "The Far Side": play five nights through the real controls. The test reads the solver's share per dial step
 // (fw_share) only to choose a setting quickly; the page never shows it.
 async function playStory(page, choices, shots = [], tap = false) {
@@ -117,7 +154,7 @@ async function playStory(page, choices, shots = [], tap = false) {
 }
 
 async function run() {
-  const started = performance.now(), equivalence = await compareWasm(), resonanceEquivalence = await compareResonance();
+  const started = performance.now(), equivalence = await compareWasm(), resonanceEquivalence = await compareResonance(), slitsEquivalence = await compareSlits();
   fs.mkdirSync('docs/images', {recursive: true});
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
   const origin = `http://127.0.0.1:${server.address().port}`;
@@ -177,7 +214,13 @@ async function run() {
   check(await page.locator('body').evaluate(el => el.scrollWidth <= innerWidth), 'desktop has no horizontal overflow');
   // Two barriers: tune to the first resonance, watch the probability pile up between the walls and pass.
   const rs = () => page.evaluate(() => window.rsView.snapshot);
-  const shoot = (target, name) => page.locator(target).screenshot({path: `docs/images/${name}.jpg`, type: 'jpeg', quality: 86});
+  // Element shots keep a margin of the page around the section, so its right edge is not mistaken for a cut.
+  const shoot = async (target, name, p = page) => {
+    const raw = await p.locator(target).boundingBox(), margin = 24, width = p.viewportSize().width;
+    const scroll = await p.evaluate(() => ({x: scrollX, y: scrollY})), box = {...raw, x: raw.x + scroll.x, y: raw.y + scroll.y};
+    await p.screenshot({path: `docs/images/${name}.jpg`, type: 'jpeg', quality: 86, fullPage: true,
+      clip: {x: Math.max(0, box.x - margin), y: Math.max(0, box.y - margin), width: Math.min(width, box.x + box.width + margin) - Math.max(0, box.x - margin), height: box.height + 2 * margin}});
+  };
   let r = await rs();
   check(r.paused && r.mode === 0 && Math.abs(r.energy - 0.3) < 1e-12 && r.e1 > 0.15 && r.e1 < 0.17 && r.e2 > 0.6 && r.e2 < 0.7, `two resonances found in C (${r.e1}, ${r.e2})`);
   await page.locator('#rs-e1').click();
@@ -204,6 +247,43 @@ async function run() {
   const release = await rs();
   check(release.mode === 1 && release.done && release.pWell < 0.05 && release.pWell > 0.001, `the trapped wave leaks out (${release.pWell} left at t = ${release.time})`);
   await shoot('#two-barriers', 'two-barriers-release');
+  // Two slits: send the wave, read the fringes against Fraunhofer, then close a slit and watch which slit.
+  const sl = () => page.evaluate(() => window.slView.snapshot);
+  let q = await sl();
+  check(q.paused && q.mode === 0 && q.lambda === 2.5 && q.sep === 8.8 && q.width === 2.2 && q.measuredAt < 0, 'the slit experiment waits for a send');
+  await page.locator('#sl-send').click();
+  for (let i = 0; i < 60 && !(await sl()).done; i++) await page.clock.runFor(100);
+  q = await sl();
+  check(q.done && Math.abs(q.spacingMeasured / q.spacing - 1) < 0.05 && q.visibility > 0.95, `two slits: fringe ${q.spacingMeasured} vs L tan asin(λ/d) ${q.spacing}, visibility ${q.visibility}`);
+  await page.clock.runFor(1500); q = await sl();
+  check(q.particles > 500 && q.firing, `particles land one at a time (${q.particles})`);
+  const ys = await page.evaluate(() => window.slView.particles());
+  check(ys.every(y => Math.abs(y) <= 100), 'every particle lands on the screen');
+  const twoSlits = q;
+  await shoot('#two-slits', 'two-slits');
+  await page.locator('#sl-watch').click();
+  check(await page.locator('#sl-scramble').isVisible(), 'the phase slider appears when watching');
+  for (let i = 0; i < 100 && !(await sl()).done; i++) await page.clock.runFor(100);
+  await page.clock.runFor(1500); q = await sl();
+  check(q.done && q.mode === 3 && q.visibility < 0.3 && q.coherence < 1e-12, `watching which slit removes the fringes (visibility ${q.visibility})`);
+  const watched = q;
+  await shoot('#two-slits', 'two-slits-watched');
+  await page.locator('#sl-scramble').fill('0'); q = await sl();
+  check(q.visibility > 0.95 && q.coherence === 1, `no random phase: the fringes return (${q.visibility})`);
+  await page.locator('#sl-close-b').click();
+  for (let i = 0; i < 60 && !(await sl()).done; i++) await page.clock.runFor(100);
+  q = await sl();
+  check(q.done && q.mode === 1 && q.visibility < 0.3, `one slit: no fringes (visibility ${q.visibility})`);
+  const oneSlit = q;
+  await shoot('#two-slits', 'two-slits-one');
+  // No sideways scrolling at desktop widths (the page, and every element inside the window).
+  for (const width of [1920, 1440, 1280, 1100, 1024]) {
+    await page.setViewportSize({width, height: 1050}); await page.clock.runFor(100);
+    const o = await page.evaluate(() => ({scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth,
+      wide: [...document.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > innerWidth + 0.5).map(e => e.id || e.className || e.tagName).slice(0, 5)}));
+    check(o.scroll <= o.client && o.wide.length === 0, `${width}px wide: no sideways scroll (${o.scroll}/${o.client}) ${o.wide.join(',')}`);
+  }
+  await page.setViewportSize({width: 1440, height: 1050});
   await page.getByRole('link', {name: 'How it works'}).click();
   check(page.url().endsWith('#field-notes'), 'field notes link');
 
@@ -278,6 +358,13 @@ async function run() {
   size = await mobile.evaluate(sizes);
   check(size.dom >= 14 && size.canvas >= 14, `390x844 with two barriers: text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
   await mobile.locator('#two-barriers').screenshot({path: 'docs/images/two-barriers-mobile.jpg', type: 'jpeg', quality: 86});
+  await mobile.locator('#sl-send').tap();
+  for (let i = 0; i < 60 && !(await mobile.evaluate(() => window.slView.snapshot.done)); i++) await mobile.clock.runFor(100);
+  await mobile.clock.runFor(800);
+  check((await mobile.evaluate(() => window.slView.snapshot)).particles > 0, 'touch sends the slit wave and particles land');
+  size = await mobile.evaluate(sizes);
+  check(size.dom >= 14 && size.canvas >= 14, `390x844 with two slits: text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
+  await mobile.locator('#two-slits').screenshot({path: 'docs/images/two-slits-mobile.jpg', type: 'jpeg', quality: 86});
   await mobile.setViewportSize({width: 844, height: 390}); await mobile.clock.runFor(100);
   size = await mobile.evaluate(sizes);
   check(size.dom >= 14 && size.canvas >= 14, `844x390: smallest text DOM ${size.dom}px (${size.where}), canvas ${size.canvas}px`);
@@ -324,11 +411,14 @@ async function run() {
   await broken.close();
   check(normalErrors.length === 0, `console/page errors ${normalErrors.join(';')}`);
   check(external.length === 0, 'no external requests');
-  const result = {checks, seconds: (performance.now() - started) / 1000, equivalence, resonanceEquivalence, errors: normalErrors.length, externalRequests: external.length,
+  const result = {checks, seconds: (performance.now() - started) / 1000, equivalence, resonanceEquivalence, slitsEquivalence, errors: normalErrors.length, externalRequests: external.length,
     standard: {pRight: standard.pRight, theory: standard.theory, norm: standard.norm, time: standard.time},
     half: {height: half.height, pRight: half.pRight, theory: half.theory}, low: {height: low.height, pRight: low.pRight},
     twoBarriers: {e1: onRes.e1, g1: onRes.g1, e2: onRes.e2, g2: onRes.g2, onResonance: {pRight: onRes.pRight, theory: onRes.tPacket, wellPeak, time: onRes.time},
       offResonance: {energy: offRes.energy, pRight: offRes.pRight, theory: offRes.tPacket}, release: {pWell: release.pWell, time: release.time}},
+    twoSlits: {lambda: twoSlits.lambda, sep: twoSlits.sep, width: twoSlits.width, spacing: twoSlits.spacingMeasured, theory: twoSlits.spacing,
+      visibility: twoSlits.visibility, visibilityTheory: twoSlits.visibilityTheory, through: twoSlits.pBeyond, particles: twoSlits.particles,
+      watchedVisibility: watched.visibility, oneSlitVisibility: oneSlit.visibility},
     screenshots: fs.readdirSync('docs/images').filter(file => file.endsWith('.jpg')).sort()};
   fs.writeFileSync('docs/validation.json', JSON.stringify(result, null, 2) + '\n'); console.log(JSON.stringify(result, null, 2));
 }

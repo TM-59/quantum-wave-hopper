@@ -1,6 +1,6 @@
 {
-  "checks": 103,
-  "seconds": 112.27289191800001,
+  "checks": 145,
+  "seconds": 209.051177197,
   "equivalence": {
     "rows": 102,
     "columns": 25,
@@ -12,6 +12,13 @@
     "columns": 37,
     "maxError": 7.186344852527782e-10,
     "tolerance": 1e-9
+  },
+  "slitsEquivalence": {
+    "rows": 40,
+    "columns": 38,
+    "maxError": 2.439159985101469e-13,
+    "tolerance": 1e-9,
+    "maxImageByteSum": 0
   },
   "errors": 0,
   "externalRequests": 0,
@@ -28,7 +35,7 @@
   },
   "low": {
     "height": 0.3,
-    "pRight": 0.8269939020498953
+    "pRight": 0.8269939020498961
   },
   "twoBarriers": {
     "e1": 0.15815141254176135,
@@ -38,7 +45,7 @@
     "onResonance": {
       "pRight": 0.5026447477277787,
       "theory": 0.5013355059734005,
-      "wellPeak": 0.3739721036795994,
+      "wellPeak": 0.372785915152145,
       "time": 822.6500000000001
     },
     "offResonance": {
@@ -50,6 +57,19 @@
       "pWell": 0.028495700538941456,
       "time": 200
     }
+  },
+  "twoSlits": {
+    "lambda": 2.5,
+    "sep": 8.8,
+    "width": 2.2,
+    "spacing": 28.665421232773284,
+    "theory": 29.629922272282407,
+    "visibility": 0.999319954994719,
+    "visibilityTheory": 0.9999065652937394,
+    "through": 0.22774888863212955,
+    "particles": 2375,
+    "watchedVisibility": 0.14132367532555665,
+    "oneSlitVisibility": 0.16526725271175854
   },
   "screenshots": [
     "before-terminal.jpg",
@@ -72,6 +92,10 @@
     "two-barriers-mobile.jpg",
     "two-barriers-pileup.jpg",
     "two-barriers-release.jpg",
-    "two-barriers.jpg"
+    "two-barriers.jpg",
+    "two-slits-mobile.jpg",
+    "two-slits-one.jpg",
+    "two-slits-watched.jpg",
+    "two-slits.jpg"
   ]
 }

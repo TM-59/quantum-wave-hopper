@@ -4,8 +4,10 @@
  * changes them. */
 #include "../src/observer.h"
 #include "../src/resonance.h"
+#include "../src/slits.h"
 #include "../src/svg.h"
 #include "../src/wave.h"
+#include "../src/wave2d.h"
 
 #include <complex.h>
 #include <math.h>
@@ -658,6 +660,318 @@ static void fig_rs_adapter(void)
     value("rs-clamp", "energy after asking for 9 (theory 0.75: clamped)", rs_value(RS_ENERGY), 0.75);
 }
 
+/* ---- Page 6: two dimensions and the double slit ---- */
+
+/* S26: every factor of the 2D step is a Cayley transform: the norm stays 1, for the browser's step and a huge one. */
+static void fig_norm2d(void)
+{
+    Wave2 w;
+    must(wave2_init(&w, 128, 129, -12.8, -12.8, 0.2, 0.02));
+    wave2_gaussian(&w, -5.0, 0.0, 2.0, 3.0, 2.5, 0.0);
+    wave2_set_slits(&w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
+    double worst = 0.0;
+    int n = 0;
+    for (int k = 0; k <= 400; k++) {
+        double d = wave2_norm(&w) - 1.0;
+        worst = fmax(worst, fabs(d));
+        if (k % 4 == 0) { xs[n] = (float)(k * 0.02); ya[n] = (float)(d * 1e13); n++; }
+        if (k < 400) wave2_step(&w);
+    }
+    value("w2-norm", "largest |norm - 1| over 400 steps of the 2D scheme through the slit wall (theory 0)", worst, 0.0);
+    w.dt = 2.0;
+    for (int k = 0; k < 50; k++) wave2_step(&w);
+    value("w2-norm-big", "norm after 50 more steps of dt = 2, 100 times the browser's (theory 1: unitary for any step)", wave2_norm(&w), 1.0);
+    Series s[] = {{"norm - 1 (x 1e13)", ya, "#1f77b4"}};
+    plot("norm2d.svg", "2D alternating-direction Crank-Nicolson: total probability through the slits", "t", "departure x 1e13", n, s, 1);
+    wave2_free(&w);
+}
+
+static double dist2(const Wave2 *a, const Wave2 *b)
+{
+    double s = 0.0;
+    for (int k = 0; k < a->nx * a->ny; k++) s += pow(cabs(a->psi[k] - b->psi[k]), 2);
+    return sqrt(s) * a->dx;
+}
+
+static void order_run(Wave2 *w, double dt)
+{
+    must(wave2_init(w, 96, 97, -9.6, -9.6, 0.2, dt));
+    wave2_gaussian(w, -3.0, 0.0, 1.5, 2.5, 2.5, 0.0);
+    wave2_set_slits(w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
+    for (int k = 0; k < (int)lround(1.6 / dt); k++) wave2_step(w);
+}
+
+/* S27: second order in dt once V dt is small. */
+static void fig_order2d(void)
+{
+    double dts[5] = {0.04, 0.02, 0.01, 0.005, 0.0025}, errs[5];
+    Wave2 ref;
+    order_run(&ref, 0.0003125);
+    for (int i = 0; i < 5; i++) {
+        Wave2 w;
+        order_run(&w, dts[i]);
+        errs[i] = dist2(&w, &ref);
+        wave2_free(&w);
+        xs[i] = (float)log10(dts[i]);
+        ya[i] = (float)log10(errs[i]);
+        yb[i] = (float)(log10(errs[4]) + 2.0 * (log10(dts[i]) - log10(dts[4])));
+    }
+    wave2_free(&ref);
+    value("w2-order", "slope of log(error) against log(dt) between dt = 0.005 and 0.0025, slit wall V = 60, reference dt = 0.0003125 (theory 2)", log(errs[3] / errs[4]) / log(2.0), 2.0);
+    value("w2-order-coarse", "the same slope between dt = 0.04 and 0.02, where V dt = 2.4 is not small", log(errs[0] / errs[1]) / log(2.0), 2.0);
+    value("w2-error-browser-dt", "L2 distance from the reference at the browser's dt = 0.02 after t = 1.6 (a wave function of norm 1)", errs[1], 0.0);
+    Series s[] = {{"error", ya, "#1f77b4"}, {"slope 2 through the finest", yb, "#d62728"}};
+    plot("order2d.svg", "2D scheme: error against time step at t = 1.6 (log-log)", "log10 dt", "log10 of the L2 error", 5, s, 2);
+}
+
+/* S28: a free 2D packet. */
+static void fig_spread2d(void)
+{
+    Wave2 w;
+    double sy = 2.0, k = 2.0, dt = 0.01;
+    must(wave2_init(&w, 200, 121, -20.0, -12.0, 0.2, dt));
+    wave2_gaussian(&w, -8.0, 0.0, 2.0, sy, k, 0.0);
+    double x0 = wave2_mean(&w, 0), e0 = wave2_energy(&w), worst = 0.0;
+    int n = 0;
+    for (int s = 0; s <= 400; s++) {
+        double t = s * dt, th = sy * sqrt(1.0 + pow(t / (2.0 * sy * sy), 2.0)), m = sqrt(wave2_variance(&w, 1));
+        worst = fmax(worst, fabs(m / th - 1.0));
+        if (s % 10 == 0) { xs[n] = (float)t; ya[n] = (float)m; yb[n] = (float)th; n++; }
+        if (s < 400) wave2_step(&w);
+    }
+    double vg = sin(k * 0.2) / 0.2;
+    value("w2-width", "largest relative gap between the packet's width in y and sigma sqrt(1 + (t / 2 sigma^2)^2) over t in [0, 4] (theory 0)", worst, 0.0);
+    value("w2-centre", "distance the centre moved in t = 4 at k = 2 (theory: the grid's group velocity sin(k dx) / dx times t)", wave2_mean(&w, 0) - x0, vg * 4.0);
+    value("w2-energy", "relative change of the mean energy of the free packet over the run (theory 0: with V = 0 the factors commute)", fabs(wave2_energy(&w) / e0 - 1.0), 0.0);
+    Series s[] = {{"width in y (2D solver)", ya, "#1f77b4"}, {"continuum formula", yb, "#d62728"}};
+    plot("spread2d.svg", "A free 2D packet spreads across its motion as the 1D law says", "t", "standard deviation in y", n, s, 2);
+    wave2_free(&w);
+}
+
+static double screen_y(int m) { return -sl_value(SL_SCREEN_HALF) + (m + 0.5) * 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS; }
+static void sl_finish(void) { while (!sl_value(SL_DONE)) sl_step(50); }
+static double saved_screen[SL_BINS];
+
+/* S29: the far field of the two slits against Fraunhofer. */
+static void fig_far(void)
+{
+    sl_reset(0);
+    sl_controls(2.5, 8.8, 2.2);
+    sl_finish();
+    double l1 = 0.0, l1i = 0.0, h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS;
+    for (int m = 0; m < SL_BINS; m++) {
+        xs[m] = (float)screen_y(m);
+        ya[m] = (float)sl_screen(m);
+        yb[m] = (float)sl_screen_theory(m);
+        yc[m] = (float)sl_screen_ideal(m);
+        l1 += fabs(sl_screen(m) - sl_screen_theory(m)) * h;
+        l1i += fabs(sl_screen(m) - sl_screen_ideal(m)) * h;
+        saved_screen[m] = sl_screen(m);
+    }
+    double y1 = sl_value(SL_SPACING_MEASURED), k = sl_value(SL_K), L = sl_value(SL_SCREEN_L);
+    value("sl-spacing", "first bright fringe on the screen at L = 100 (lambda 2.5, d 8.8, a 2.2) (theory L tan(asin(lambda / d)))", y1, sl_value(SL_SPACING));
+    value("sl-spacing-paraxial", "the same against the small-angle lambda L / d", y1, 2.5 * L / 8.8);
+    value("sl-dky", "that fringe as a transverse wavenumber k y / sqrt(y^2 + L^2) (theory 2 pi / d)", k * y1 / sqrt(y1 * y1 + L * L), sl_value(SL_DKY));
+    value("sl-visibility", "fringe visibility around the centre of the screen (theory 1 for two equal slits)", sl_value(SL_VISIBILITY), 1.0);
+    value("sl-l1", "L1 distance between the measured screen and Fraunhofer of the Gaussian-lit slits (each of area 1; 0 = equal, 2 = disjoint)", l1, 0.0);
+    value("sl-l1-ideal", "the same against the textbook cos^2 sinc^2 for even light", l1i, 0.0);
+    value("sl-through", "probability that passed the slits (x >= 1.8) at the end of the run", sl_value(SL_P_BEYOND), 0.0);
+    value("sl-absorbed", "probability the absorbing layers took during the run (theory: small; the run stops before the waves reach them)", 1.0 - sl_value(SL_NORM), 0.0);
+    Series s[] = {{"2D solver", ya, "#1f77b4"}, {"Fraunhofer, Gaussian-lit", yb, "#d62728"}, {"textbook cos^2 sinc^2", yc, "#888888"}};
+    plot("slits-far.svg", "Two slits (lambda 2.5, d 8.8, a 2.2): intensity on a screen 100 away", "screen position y", "intensity (area 1)", SL_BINS, s, 3);
+}
+
+/* S30: one slit, the missing order and the field in the hole. Direct runs on the browser's geometry
+ * (src/slits.c: 256 x 256, dx 0.2, dt 0.02, wall 0.8 thick of V = 60, packet sigma 3 x 6 from x = -12). */
+static void slit_run(Wave2 *w, double lambda, double sep, double width, int open, double thickness)
+{
+    double k = 2.0 * PI / lambda;
+    must(wave2_init(w, 256, 256, -25.6, -25.6, 0.2, 0.02));
+    must(wave2_absorber(w, 4.0, 3.0));
+    wave2_gaussian(w, -12.0, 0.0, 3.0, 6.0, k, 0.0);
+    wave2_set_slits(w, 0.0, thickness, 60.0, sep, width, open);
+    int steps = (int)ceil(21.0 / (sin(k * 0.2) / 0.2) / 0.02);
+    for (int s = 0; s < steps; s++) wave2_step(w);
+}
+
+static void fig_one_slit(void)
+{
+    enum { M = 241 };
+    double lambda = 2.0, sep = 6.0, width = 3.0, k = 2.0 * PI / lambda, ky[M], one[M], two[M], th1[M], th2[M];
+    for (int m = 0; m < M; m++) ky[m] = -k + 2.0 * k * m / (M - 1);
+    Wave2 w;
+    slit_run(&w, lambda, sep, width, 3, 0.8);
+    wave2_ky_spectrum(&w, 1.8, M, ky, two);
+    wave2_free(&w);
+    slit_run(&w, lambda, sep, width, 1, 0.8);
+    wave2_ky_spectrum(&w, 1.8, M, ky, one);
+    wave2_free(&w);
+    double s1 = 0.0, s2 = 0.0, t1 = 0.0, t2 = 0.0, mean = 0.0;
+    for (int m = 0; m < M; m++) {
+        th1[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 1);
+        th2[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 3);
+        s1 += one[m]; s2 += two[m]; t1 += th1[m]; t2 += th2[m];
+        mean += ky[m] * one[m];
+    }
+    int centre = M / 2, order2 = (int)lround((2.0 * (2.0 * PI / sep) + k) / (2.0 * k) * (M - 1)), order1 = (int)lround((2.0 * PI / sep + k) / (2.0 * k) * (M - 1));
+    for (int m = 0; m < M; m++) {
+        xs[m] = (float)ky[m];
+        ya[m] = (float)(two[m] / s2);
+        yb[m] = (float)(th2[m] / t2);
+        yc[m] = (float)(2.0 * one[m] / s1 * (th2[centre] / t2) / (2.0 * th1[centre] / t1));
+    }
+    value("missing-order", "two slits d = 6, a = 3, lambda 2: intensity at ky = 2 (2 pi / d), the second order, over the central maximum (theory 0: d / a = 2)", two[order2] / two[centre], 0.0);
+    value("first-order", "the same at the first order ky = 2 pi / d (theory: the envelope there, sinc^2(pi a / d))", two[order1] / two[centre], th2[order1] / th2[centre]);
+    value("envelope-zero", "one slit a = 3: intensity at ky = 2 pi / a over its maximum (theory 0)", one[order2] / one[centre], 0.0);
+    double kq[2] = {0.0, 2.0 * (2.0 * PI / sep)}, thin[2];
+    slit_run(&w, lambda, sep, width, 3, 0.2);
+    wave2_ky_spectrum(&w, 1.2, 2, kq, thin);
+    wave2_free(&w);
+    value("missing-order-thin", "the same second order behind a wall 0.2 thick, one grid cell (theory 0)", thin[1] / thin[0], 0.0);
+    slit_run(&w, lambda, sep, width, 0, 0.2);
+    value("thin-leak", "probability that tunnels through that 0.2 wall with both slits closed (theory: small but not 0)", wave2_prob_beyond(&w, 1.2), 0.0);
+    wave2_free(&w);
+    slit_run(&w, lambda, sep, width, 0, 0.8);
+    value("thick-leak", "the same through the browser's 0.8 wall (theory: about exp(-2 kappa 0.8))", wave2_prob_beyond(&w, 1.8), 0.0);
+    wave2_free(&w);
+    value("kirchhoff-lean", "mean ky of the light from the upper slit alone, in units of k (Fraunhofer of a real aperture: 0)", mean / s1 / k, 0.0);
+    Series s[] = {{"two slits (2D solver)", ya, "#1f77b4"}, {"two slits (Fraunhofer)", yb, "#d62728"}, {"one slit, scaled (2D solver)", yc, "#2ca02c"}};
+    plot("slits-one.svg", "Two slits d = 6, a = 3 (lambda 2): the second order falls on a zero of the one-slit envelope", "transverse wavenumber ky", "intensity (area 1)", M, s, 3);
+}
+
+/* S32: Born's rule, one particle at a time (the browser's counter draw). Run after fig_far (mode 0, done). */
+static void fig_born(void)
+{
+    enum { COARSE = 50 };
+    int counts[3] = {200, 2000, 20000};
+    float *out[3] = {ya, yb, yc};
+    double half = sl_value(SL_SCREEN_HALF), width = 2.0 * half / COARSE, worst = 0.0;
+    static float exact[COARSE];
+    sl_seed(1);
+    for (int c = 0; c < COARSE; c++) {
+        double p = 0.0;
+        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++) p += sl_screen(m) * 2.0 * half / SL_BINS;
+        exact[c] = (float)(p / width);
+        xs[c] = (float)(-half + (c + 0.5) * width);
+    }
+    for (int r = 0; r < 3; r++) {
+        double hist[COARSE] = {0};
+        for (int n = 0; n < counts[r]; n++) {
+            int c = (int)floor((sl_particle(n) + half) / width);
+            if (c >= 0 && c < COARSE) hist[c]++;
+        }
+        for (int c = 0; c < COARSE; c++) {
+            out[r][c] = (float)(hist[c] / counts[r] / width);
+            if (r == 2) {
+                double p = exact[c] * width, sd = sqrt(counts[r] * p * (1.0 - p)) + 1e-12;
+                worst = fmax(worst, fabs(hist[c] - counts[r] * p) / sd);
+            }
+        }
+    }
+    value("born-sd", "20,000 particles in 50 bins: largest deviation from the measured intensity, in binomial standard deviations (theory: about 2.5 for 50 bins)", worst, 0.0);
+    double first = sl_particle(7);
+    sl_seed(2);
+    value("born-seed", "particle 7 with another seed minus particle 7 with seed 1 (a different draw: not 0)", sl_particle(7) - first, 0.0);
+    sl_seed(1);
+    value("born-repeat", "particle 7 drawn again with seed 1 minus the first draw (theory 0: a pure function of seed and number)", sl_particle(7) - first, 0.0);
+    for (int c = 0; c < COARSE; c++) ya[c] = out[0][c], yb[c] = out[1][c], yc[c] = out[2][c];
+    static float ex[COARSE];
+    for (int c = 0; c < COARSE; c++) ex[c] = exact[c];
+    Series s[] = {{"200 particles", ya, "#bbbbbb"}, {"2,000 particles", yb, "#2ca02c"}, {"20,000 particles", yc, "#1f77b4"}, {"measured intensity", ex, "#d62728"}};
+    plot("born.svg", "Particles one at a time: histograms against the intensity they are drawn from", "screen position y", "particles per unit y / N", COARSE, s, 4);
+}
+
+/* S31: which path. Mode 3 runs the two one-slit waves; a random phase on slit B multiplies the cross term. */
+static void fig_coherence(void)
+{
+    sl_reset(3);
+    sl_finish();
+    double h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS, worst = 0.0;
+    sl_scramble(0.0);
+    double sup = 0.0;
+    for (int m = 0; m < SL_BINS; m++) sup += fabs(sl_screen(m) - saved_screen[m]) * h;
+    value("superposition", "L1 distance between the sum of the two one-slit waves and the two-slit run (theory 0 if the wall only cuts the light)", sup, 0.0);
+    int n = 0;
+    for (int i = 0; i <= 20; i++) {
+        double phi = PI * i / 20.0;
+        sl_scramble(phi);
+        xs[n] = (float)phi;
+        ya[n] = (float)sl_value(SL_VISIBILITY);
+        yb[n] = (float)sl_value(SL_VISIBILITY_THEORY);
+        yc[n] = (float)sl_value(SL_COHERENCE);
+        worst = fmax(worst, fabs(sl_value(SL_VISIBILITY) - sl_value(SL_VISIBILITY_THEORY)));
+        n++;
+    }
+    sl_scramble(PI);
+    value("which-path", "central visibility when the phase on slit B is uniform on [-pi, pi] (theory: the one-slit envelope alone)", sl_value(SL_VISIBILITY), sl_value(SL_VISIBILITY_THEORY));
+    sl_scramble(PI / 2.0);
+    value("coherence-half", "coherence <e^{i phi}> for phi uniform on [-pi/2, pi/2] (theory sin(pi/2) / (pi/2))", sl_value(SL_COHERENCE), 2.0 / PI);
+    value("visibility-gap", "largest gap between the measured visibility and Fraunhofer's over 21 phase spreads (theory 0)", worst, 0.0);
+    sl_scramble(PI);
+    Series s[] = {{"visibility, 2D solver", ya, "#1f77b4"}, {"visibility, Fraunhofer", yb, "#d62728"}, {"coherence sin(phi) / phi", yc, "#888888"}};
+    plot("coherence.svg", "Watching which slit: fringe visibility against the spread of the random phase", "phase spread phi", "visibility", n, s, 3);
+}
+
+/* S33: the hard walls reflect; the absorbing layers remove what reaches them. */
+static void fig_absorber(void)
+{
+    Wave2 a, b;
+    must(wave2_init(&a, 128, 128, -12.8, -12.8, 0.2, 0.02));
+    must(wave2_init(&b, 128, 128, -12.8, -12.8, 0.2, 0.02));
+    must(wave2_absorber(&b, 4.0, 3.0));
+    wave2_gaussian(&a, 0.0, 0.0, 1.5, 1.5, 2.0, 1.0);
+    wave2_gaussian(&b, 0.0, 0.0, 1.5, 1.5, 2.0, 1.0);
+    int n = 0;
+    double pa = 0.0, pb = 0.0;
+    for (int s = 0; s <= 1000; s++) {
+        if (s % 10 == 0) {
+            pa = pb = 0.0;
+            for (int j = 0; j < 128; j++)
+                for (int i = 0; i < 128; i++)
+                    if (fabs(wave2_x(&a, i)) < 6.0 && fabs(wave2_y(&a, j)) < 6.0) {
+                        pa += creal(a.psi[j * 128 + i] * conj(a.psi[j * 128 + i]));
+                        pb += creal(b.psi[j * 128 + i] * conj(b.psi[j * 128 + i]));
+                    }
+            pa *= 0.04; pb *= 0.04;
+            xs[n] = (float)(s * 0.02); ya[n] = (float)pa; yb[n] = (float)pb; n++;
+        }
+        if (s < 1000) { wave2_step(&a); wave2_step(&b); }
+    }
+    value("absorb-hard", "probability back in the central 12 x 12 at t = 20 with hard walls (it bounced back)", pa, 0.0);
+    value("absorb-layer", "the same with absorbing layers 4 thick (theory: small; what reached the edge is gone)", pb, 0.0);
+    value("absorb-norm", "total probability left with the layers at t = 20", wave2_norm(&b), 0.0);
+    Series s[] = {{"hard walls", ya, "#d62728"}, {"absorbing layers", yb, "#1f77b4"}};
+    plot("absorber.svg", "A packet sent at the corner of a 25.6 x 25.6 box: probability in the centre", "t", "probability in |x|, |y| < 6", n, s, 2);
+    wave2_free(&a);
+    wave2_free(&b);
+}
+
+/* S34: the browser's experiment, run as the page runs it. */
+static void fig_sl_adapter(void)
+{
+    sl_reset(0);
+    sl_controls(2.5, 8.8, 2.2);
+    int n = 0;
+    double worst = 0.0;
+    while (n < MAXN) {
+        xs[n] = (float)sl_value(SL_TIME);
+        ya[n] = (float)sl_value(SL_P_BEYOND);
+        yb[n] = (float)(1.0 - sl_value(SL_NORM));
+        n++;
+        if (sl_value(SL_DONE)) break;
+        sl_step(5);
+    }
+    (void)worst;
+    value("sl-steps", "steps of the default run (lambda 2.5): until a free packet's centre would be at x = 9 (theory ceil(21 / v_g / dt))", sl_value(SL_STEPS),
+          ceil(21.0 / (sin(2.0 * PI / 2.5 * 0.2) / 0.2) / 0.02));
+    sl_controls(9.0, 1.0, 9.0);
+    value("sl-clamp-lambda", "wavelength after asking for 9 (theory 4: clamped)", sl_value(SL_LAMBDA), 4.0);
+    value("sl-clamp-width", "slit width after asking for 9 with the separation clamped to 4 (theory 3.0: at least 1 of wall between)", sl_value(SL_WIDTH), 3.0);
+    sl_controls(2.5, 8.8, 2.2);
+    Series s[] = {{"passed the slits", ya, "#1f77b4"}, {"taken by the absorbers", yb, "#d62728"}};
+    plot("sl-demo.svg", "The browser's default double-slit run: probability beyond the wall", "t", "probability", n, s, 2);
+}
+
 int main(int argc, char **argv)
 {
     snprintf(dir, sizeof dir, "%s", argc > 1 ? argv[1] : "docs/theory/figures");
@@ -684,6 +998,15 @@ int main(int argc, char **argv)
     fig_decay();
     fig_packet_resonance();
     fig_rs_adapter();
+    fig_norm2d();
+    fig_order2d();
+    fig_spread2d();
+    fig_far();
+    fig_born();
+    fig_coherence();
+    fig_one_slit();
+    fig_absorber();
+    fig_sl_adapter();
     fclose(values);
     return 0;
 }

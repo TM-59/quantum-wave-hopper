@@ -122,3 +122,16 @@ body[data-mode=story] .telemetry,body[data-mode=story] #standard,body[data-mode=
 @media(max-width:720px),(max-height:500px),(pointer:coarse){
 .rs-intro p:not(.eyebrow),#rs-note{font-size:14px;line-height:1.7;letter-spacing:.3px}
 }
+/* The double-slit experiment (M3). */
+.slits{margin-top:40px;padding-top:26px;border-top:1px solid var(--line)}
+.sl-views{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1.3fr);background:#0d1124}
+.sl-views canvas{display:block;width:100%;min-width:0;aspect-ratio:560/520}#sl-screen{border-left:1px solid var(--line);aspect-ratio:240/520}
+.key.phase{background:linear-gradient(90deg,#f33,#ff3,#3f3,#3ff,#33f,#f3f)}.key.fraunhofer{width:24px;height:0;border-top:2px dashed var(--barrier)}
+.key.textbook{width:24px;height:0;border-top:2px dotted #aab3c9}.key.particle{width:8px;height:8px;border-radius:50%;background:var(--warm)}
+.telemetry small b{font-weight:600;color:var(--ink)}
+#sl-particles{display:block;width:100%;aspect-ratio:1080/260}
+#sl-note{font-size:10px;line-height:1.6;color:var(--muted);margin:12px 0}
+@media(max-width:720px){.sl-views{grid-template-columns:1fr}.sl-views canvas{aspect-ratio:1}#sl-screen{border-left:0;border-top:1px solid var(--line);aspect-ratio:1.2}#sl-particles{aspect-ratio:1.2}}
+@media(max-width:720px),(max-height:500px),(pointer:coarse){
+#sl-note{font-size:14px;line-height:1.7;letter-spacing:.3px}
+}

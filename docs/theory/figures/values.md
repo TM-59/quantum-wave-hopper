@@ -94,3 +94,39 @@ Units: hbar = m = 1. The last column is the relative error; where the theory col
 | `rs-off` | the same experiment at E = 0.40, between the resonances (theory: the packet average) | 0.051152276 | 0.050990171 | 3.18e-03 |
 | `rs-release` | browser 'release from the well' run on its grid (dx 0.1): decay rate fitted on [30, 200] (theory Gamma) | 0.017131596 | 0.017320693 | 1.09e-02 |
 | `rs-clamp` | energy after asking for 9 (theory 0.75: clamped) | 0.75 | 0.75 | 0.00e+00 |
+| `w2-norm` | largest |norm - 1| over 400 steps of the 2D scheme through the slit wall (theory 0) | 8.5931262e-14 | 0 | 8.59e-14 |
+| `w2-norm-big` | norm after 50 more steps of dt = 2, 100 times the browser's (theory 1: unitary for any step) | 1 | 1 | 8.79e-14 |
+| `w2-order` | slope of log(error) against log(dt) between dt = 0.005 and 0.0025, slit wall V = 60, reference dt = 0.0003125 (theory 2) | 1.9987392 | 2 | 6.30e-04 |
+| `w2-order-coarse` | the same slope between dt = 0.04 and 0.02, where V dt = 2.4 is not small | -0.3692896 | 2 | 1.18e+00 |
+| `w2-error-browser-dt` | L2 distance from the reference at the browser's dt = 0.02 after t = 1.6 (a wave function of norm 1) | 0.18292513 | 0 | 1.83e-01 |
+| `w2-width` | largest relative gap between the packet's width in y and sigma sqrt(1 + (t / 2 sigma^2)^2) over t in [0, 4] (theory 0) | 0.00025053413 | 0 | 2.51e-04 |
+| `w2-centre` | distance the centre moved in t = 4 at k = 2 (theory: the grid's group velocity sin(k dx) / dx times t) | 7.7784195 | 7.7883668 | 1.28e-03 |
+| `w2-energy` | relative change of the mean energy of the free packet over the run (theory 0: with V = 0 the factors commute) | 1.110223e-15 | 0 | 1.11e-15 |
+| `sl-spacing` | first bright fringe on the screen at L = 100 (lambda 2.5, d 8.8, a 2.2) (theory L tan(asin(lambda / d))) | 28.665421 | 29.629922 | 3.26e-02 |
+| `sl-spacing-paraxial` | the same against the small-angle lambda L / d | 28.665421 | 28.409091 | 9.02e-03 |
+| `sl-dky` | that fringe as a transverse wavenumber k y / sqrt(y^2 + L^2) (theory 2 pi / d) | 0.69254869 | 0.71399833 | 3.00e-02 |
+| `sl-visibility` | fringe visibility around the centre of the screen (theory 1 for two equal slits) | 0.99931995 | 1 | 6.80e-04 |
+| `sl-l1` | L1 distance between the measured screen and Fraunhofer of the Gaussian-lit slits (each of area 1; 0 = equal, 2 = disjoint) | 0.055430712 | 0 | 5.54e-02 |
+| `sl-l1-ideal` | the same against the textbook cos^2 sinc^2 for even light | 0.052947277 | 0 | 5.29e-02 |
+| `sl-through` | probability that passed the slits (x >= 1.8) at the end of the run | 0.22774889 | 0 | 2.28e-01 |
+| `sl-absorbed` | probability the absorbing layers took during the run (theory: small; the run stops before the waves reach them) | 0.00040281122 | 0 | 4.03e-04 |
+| `born-sd` | 20,000 particles in 50 bins: largest deviation from the measured intensity, in binomial standard deviations (theory: about 2.5 for 50 bins) | 2.7202806 | 0 | 2.72e+00 |
+| `born-seed` | particle 7 with another seed minus particle 7 with seed 1 (a different draw: not 0) | 35.461902 | 0 | 3.55e+01 |
+| `born-repeat` | particle 7 drawn again with seed 1 minus the first draw (theory 0: a pure function of seed and number) | 0 | 0 | 0.00e+00 |
+| `superposition` | L1 distance between the sum of the two one-slit waves and the two-slit run (theory 0 if the wall only cuts the light) | 0.0021401808 | 0 | 2.14e-03 |
+| `which-path` | central visibility when the phase on slit B is uniform on [-pi, pi] (theory: the one-slit envelope alone) | 0.14132368 | 0.16481759 | 1.43e-01 |
+| `coherence-half` | coherence <e^{i phi}> for phi uniform on [-pi/2, pi/2] (theory sin(pi/2) / (pi/2)) | 0.63661977 | 0.63661977 | 0.00e+00 |
+| `visibility-gap` | largest gap between the measured visibility and Fraunhofer's over 21 phase spreads (theory 0) | 0.023515106 | 0 | 2.35e-02 |
+| `missing-order` | two slits d = 6, a = 3, lambda 2: intensity at ky = 2 (2 pi / d), the second order, over the central maximum (theory 0: d / a = 2) | 0.15298574 | 0 | 1.53e-01 |
+| `first-order` | the same at the first order ky = 2 pi / d (theory: the envelope there, sinc^2(pi a / d)) | 0.48262442 | 0.40687923 | 1.86e-01 |
+| `envelope-zero` | one slit a = 3: intensity at ky = 2 pi / a over its maximum (theory 0) | 0.17105686 | 0 | 1.71e-01 |
+| `missing-order-thin` | the same second order behind a wall 0.2 thick, one grid cell (theory 0) | 0.012726393 | 0 | 1.27e-02 |
+| `thin-leak` | probability that tunnels through that 0.2 wall with both slits closed (theory: small but not 0) | 0.054448613 | 0 | 5.44e-02 |
+| `thick-leak` | the same through the browser's 0.8 wall (theory: about exp(-2 kappa 0.8)) | 6.5378826e-06 | 0 | 6.54e-06 |
+| `kirchhoff-lean` | mean ky of the light from the upper slit alone, in units of k (Fraunhofer of a real aperture: 0) | 0.016678568 | 0 | 1.67e-02 |
+| `absorb-hard` | probability back in the central 12 x 12 at t = 20 with hard walls (it bounced back) | 0.13149663 | 0 | 1.31e-01 |
+| `absorb-layer` | the same with absorbing layers 4 thick (theory: small; what reached the edge is gone) | 4.7194183e-06 | 0 | 4.72e-06 |
+| `absorb-norm` | total probability left with the layers at t = 20 | 3.1903475e-05 | 0 | 3.19e-05 |
+| `sl-steps` | steps of the default run (lambda 2.5): until a free packet's centre would be at x = 9 (theory ceil(21 / v_g / dt)) | 436 | 436 | 0.00e+00 |
+| `sl-clamp-lambda` | wavelength after asking for 9 (theory 4: clamped) | 4 | 4 | 0.00e+00 |
+| `sl-clamp-width` | slit width after asking for 9 with the separation clamped to 4 (theory 3.0: at least 1 of wall between) | 3 | 3 | 0.00e+00 |

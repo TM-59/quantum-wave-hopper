@@ -13,6 +13,7 @@ Why the program is correct, from the repository alone: every law, formula and nu
 3. [The program: the experiment on screen](03-program.md) — the standard experiment, the half-through demonstration, from the wave function to the picture
 4. [The story: The Far Side](04-story.md) — the share the story may not change, shots and seals, battery and hours, scenes and choices, the bench
 5. [Two barriers: resonant tunnelling](05-double-barrier.md) — transfer matrices, the resonance condition, the Breit–Wigner line, width and lifetime, the packet experiment and its limits, the second experiment on screen
+6. [Two dimensions: the double slit](06-double-slit.md) — the alternating-direction Crank–Nicolson step and its unitarity and order, free 2D packets, the far screen and Fraunhofer, one slit and the thick-wall limit, which path and coherence, Born's rule one particle at a time, absorbing layers, the third experiment on screen
 
 ## How the pieces depend on each other
 
@@ -53,6 +54,19 @@ flowchart TD
     S03 --> S24
     S23 --> S25["S25 the two-barrier experiment on screen"]
     S24 --> S25
+    S07 --> S26["S26 2D alternating-direction step, unitary"]
+    S26 --> S27["S27 second order once V dt is small"]
+    S26 --> S28["S28 free 2D packet"]
+    S03 --> S28
+    S28 --> S29["S29 far screen = transverse momentum; Fraunhofer"]
+    S29 --> S30["S30 one slit, missing order, thick wall"]
+    S29 --> S31["S31 which path and coherence"]
+    S29 --> S32["S32 Born's rule, one particle at a time"]
+    S11 --> S33["S33 hard walls and absorbing layers"]
+    S30 --> S34["S34 the double slit on screen"]
+    S31 --> S34
+    S32 --> S34
+    S33 --> S34
 ```
 
 ## Coverage: statement → page → figure → code → test
@@ -84,13 +98,24 @@ flowchart TD
 | S23 | Width and lifetime, τ = ħ/Γ | [5](05-double-barrier.md) | `figures/decay.svg` | `src/wave.c#simulate_well_decay`, `src/wave.c#wave_prob_between` | `tests/test_wave.c#test_lifetime_matches_width` |
 | S24 | Packets at two barriers; the numerical limits | [5](05-double-barrier.md) | `figures/packet-resonance.svg` | `src/wave.c#double_packet_transmission`, `src/wave.c#simulate_double_transmission`, `src/wave.c#wave_set_double_barrier` | `tests/test_wave.c#test_double_barrier_packet_matches_theory` |
 | S25 | The two-barrier experiment on screen | [5](05-double-barrier.md) | `figures/rs-demo.svg`, mermaid | `src/resonance.c#rs_reset`, `src/resonance.c#rs_energy`, `src/resonance.c#rs_launch`, `src/resonance.c#rs_step`, `src/resonance.c#rs_value`, `src/resonance.c#rs_density`, `src/resonance.c#rs_zoom`, `src/resonance.c#rs_curve`, `src/resonance.c#rs_curve_packet`, `src/main.c#resonance` | `tests/test_resonance.c#test_packet_on_resonance`, `tests/test_resonance.c#test_well_release`, `tests/test_resonance.c#test_controls_are_clamped` |
+| S26 | 2D Schrödinger equation; the alternating-direction Crank–Nicolson step is unitary | [6](06-double-slit.md) | `figures/norm2d.svg` | `src/wave2d.c#wave2_step`, `src/wave2d.c#cayley_line`, `src/wave2d.c#wave2_init`, `src/wave2d.c#wave2_free`, `src/wave2d.c#wave2_x`, `src/wave2d.c#wave2_y`, `src/wave2d.c#wave2_norm`, `src/wave2d.c#wave2_set_slits` | `tests/test_slits.c#test_unitary` |
+| S27 | Second order in time once V Δt is small | [6](06-double-slit.md) | `figures/order2d.svg` | `src/wave2d.c#wave2_step` | `tests/test_slits.c#test_second_order` |
+| S28 | A free 2D packet follows the 1D laws on each axis | [6](06-double-slit.md) | `figures/spread2d.svg` | `src/wave2d.c#wave2_gaussian`, `src/wave2d.c#wave2_mean`, `src/wave2d.c#wave2_variance`, `src/wave2d.c#wave2_energy` | `tests/test_slits.c#test_free_packet` |
+| S29 | The far screen is the transverse momentum; Fraunhofer's two-slit pattern and fringe spacing | [6](06-double-slit.md) | `figures/slits-far.svg` | `src/wave2d.c#wave2_ky_spectrum`, `src/wave2d.c#wave2_prob_beyond`, `src/wave2d.c#slit_fraunhofer`, `src/wave2d.c#slit_ideal`, `src/slits.c#sl_measure` | `tests/test_slits.c#test_double_slit`, `tests/test_slits.c#test_fraunhofer_formulas` |
+| S30 | One slit, the missing order, and the thick-wall limit of Fraunhofer | [6](06-double-slit.md) | `figures/slits-one.svg` | `src/wave2d.c#wave2_set_slits`, `src/wave2d.c#wave2_ky_spectrum` | `tests/test_slits.c#test_single_slit`, `tests/theory_figs.c#missing-order` |
+| S31 | Which path: a random phase multiplies the cross term by sin Φ / Φ | [6](06-double-slit.md) | `figures/coherence.svg` | `src/slits.c#sl_scramble`, `src/wave2d.c#wave2_ky_cross` | `tests/test_slits.c#test_which_path` |
+| S32 | Born's rule: particles one at a time build the fringes | [6](06-double-slit.md) | `figures/born.svg` | `src/slits.c#sl_particle`, `src/slits.c#sl_seed` | `tests/test_slits.c#test_particles` |
+| S33 | Hard walls reflect; absorbing layers remove; grid dispersion | [6](06-double-slit.md) | `figures/absorber.svg` | `src/wave2d.c#wave2_absorber` | `tests/theory_figs.c#absorb-layer` |
+| S34 | The double-slit experiment on screen | [6](06-double-slit.md) | `figures/sl-demo.svg`, mermaid | `src/slits.c#sl_reset`, `src/slits.c#sl_controls`, `src/slits.c#sl_launch`, `src/slits.c#sl_step`, `src/slits.c#sl_value`, `src/slits.c#sl_image`, `src/slits.c#sl_screen`, `src/slits.c#sl_screen_theory`, `src/slits.c#sl_screen_ideal`, `src/main.c#slits` | `tests/test_slits.c#test_controls`, `tests/test_slits.c#test_double_slit` |
 
-Tests named `tests/theory_figs.c#…` are measurements recorded in [figures/values.md](figures/values.md) by `make theory-figs`, not assertions of `make test`. S03, S04, S08, S09, S11 and S13 are covered only that way; turning them into assertions is a follow-up.
+Tests named `tests/theory_figs.c#…` are measurements recorded in [figures/values.md](figures/values.md) by `make theory-figs`, not assertions of `make test`. S03, S04, S08, S09, S11, S13 and S33 are covered only that way (S30 partly); turning them into assertions is a follow-up.
 
 What the measurements made visible (none of it is changed here):
 
 - **The grid slows the packet**: at $k_0 = 1$ by 0.18 %, at $k_0 = 3$ by 2.7 % (S03). This is why the simulated transmission sits 0.24 % under the packet formula and the half-through run ends at 0.4989.
 - **The ends of the grid reflect** (S11); the run length keeps the packet away from them.
+- **The 2D step's time error is large inside the slit wall** (V Δt = 1.2 at the browser's step, S27), but the far screen comes from where V = 0 and does not move when Δt is cut by 4.
+- **A wall 0.8 thick is not Fraunhofer's thin screen** (S30): a missing order comes back to 15 % of the centre; a one-cell wall removes it but lets 5 % tunnel through.
 
 ## Public functions that state no law
 
@@ -101,6 +126,6 @@ What the measurements made visible (none of it is changed here):
 
 ## Reading the source against this table
 
-Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/resonance.h`, `src/farside.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
+Functions reviewed for this handbook: every declaration in `src/wave.h`, `src/observer.h`, `src/resonance.h`, `src/wave2d.h`, `src/slits.h`, `src/farside.h`, `src/render.h`, `src/svg.h` and `src/gif.h`; the static helpers `h_psi` in `src/wave.c` and `region` in `src/observer.c`; `headless` in `src/main.c`.
 
-The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages. Page 4 was added with the story layer (`src/farside.c`), which leaves the solver unchanged too. Page 5 was added with the two-barrier experiment: it adds functions to `src/wave.c` and the adapter `src/resonance.c`, and leaves the existing functions, outputs and figures byte for byte unchanged.
+The solver and the program are unchanged by this handbook: it adds `tests/theory_figs.c`, `scripts/theory-check.py`, two Makefile targets and these pages. Page 4 was added with the story layer (`src/farside.c`), which leaves the solver unchanged too. Page 5 was added with the two-barrier experiment: it adds functions to `src/wave.c` and the adapter `src/resonance.c`, and leaves the existing functions, outputs and figures byte for byte unchanged. Page 6 was added with the double slit: a separate 2D solver `src/wave2d.c` and the adapter `src/slits.c`; the 1D solver, its outputs and the earlier figures are unchanged byte for byte.

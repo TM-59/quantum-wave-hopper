@@ -1,7 +1,7 @@
 CC      ?= cc
 CFLAGS  ?= -std=c11 -O2 -Wall -Wextra -Wpedantic -Werror
 LDLIBS  += -lm
-SRC     := src/wave.c src/svg.c src/render.c src/gif.c
+SRC     := src/wave.c src/svg.c src/render.c src/gif.c src/wave2d.c src/slits.c
 EMCC    ?= emcc
 PYTHON  ?= python3
 PORT    ?= 4216
@@ -27,6 +27,9 @@ FARSIDE_H := src/wave.h src/observer.h src/farside.h tests/farside_policy.h test
 test_resonance: src/wave.c src/resonance.c tests/test_resonance.c src/wave.h src/resonance.h
 	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^) $(LDLIBS)
 
+test_slits: src/wave2d.c src/slits.c tests/test_slits.c src/wave2d.h src/slits.h
+	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^) $(LDLIBS)
+
 test_farside: $(FARSIDE) tests/test_farside.c $(FARSIDE_H)
 	$(CC) $(CFLAGS) -o $@ $(FARSIDE) tests/test_farside.c $(LDLIBS)
 
@@ -34,11 +37,12 @@ story_bench: $(FARSIDE) tests/story_bench.c $(FARSIDE_H)
 	$(CC) $(CFLAGS) -o $@ $(FARSIDE) tests/story_bench.c $(LDLIBS)
 
 # The story rows are compared byte for byte; the CI runs them with the Debian 13 toolchain of the Dockerfile.
-test: test_wave test_gif test_observer test_resonance test_farside story_bench
+test: test_wave test_gif test_observer test_resonance test_slits test_farside story_bench
 	./test_wave
 	./test_gif
 	./test_observer
 	./test_resonance
+	./test_slits
 	./test_farside
 	./story_bench --check docs/narrative
 
@@ -56,23 +60,24 @@ story-check: story_bench
 	cmp .story-check/tension.json docs/narrative/tension.json
 	rm -rf .story-check
 
-bench: test_observer test_resonance
+bench: test_observer test_resonance test_slits
 	./test_observer
 	@mkdir -p build
 	./test_observer --trace > build/native-trace.csv
 	./test_resonance --trace > build/resonance-trace.csv
+	./test_slits --trace > build/slits-trace.csv
 
 web: dist/physics.mjs
-	cp web/index.html web/style.css web/app.mjs web/story.mjs web/resonance.mjs dist/
+	cp web/index.html web/style.css web/app.mjs web/story.mjs web/resonance.mjs web/slits.mjs dist/
 	mkdir -p dist/art
 	cp assets/art/* dist/art/
 	$(PYTHON) scripts/check-size.py
 
-dist/physics.mjs: src/wave.c src/observer.c src/wave.h src/observer.h src/farside.c src/farside.h src/farside_web.c src/resonance.c src/resonance.h
+dist/physics.mjs: src/wave.c src/observer.c src/wave.h src/observer.h src/farside.c src/farside.h src/farside_web.c src/resonance.c src/resonance.h src/wave2d.c src/wave2d.h src/slits.c src/slits.h
 	mkdir -p dist
-	$(EMCC) $(CFLAGS) src/wave.c src/observer.c src/farside.c src/farside_web.c src/resonance.c -lm --no-entry -o $@ \
-	  -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sFILESYSTEM=0 -sALLOW_MEMORY_GROWTH=1 \
-	  -sEXPORTED_FUNCTIONS=_qw_reset,_qw_controls,_qw_launch,_qw_step,_qw_value,_qw_density,_qw_real,_qw_half_height,_fw_reset,_fw_dial,_fw_fire,_fw_seal,_fw_answer,_fw_value,_fw_share,_rs_reset,_rs_energy,_rs_launch,_rs_step,_rs_value,_rs_density,_rs_zoom,_rs_curve,_rs_curve_packet
+	$(EMCC) $(CFLAGS) src/wave.c src/observer.c src/farside.c src/farside_web.c src/resonance.c src/wave2d.c src/slits.c -lm --no-entry -o $@ \
+	  -sMODULARIZE=1 -sEXPORT_ES6=1 -sENVIRONMENT=web,node -sFILESYSTEM=0 -sALLOW_MEMORY_GROWTH=1 -sEXPORTED_RUNTIME_METHODS=HEAPU8 \
+	  -sEXPORTED_FUNCTIONS=_qw_reset,_qw_controls,_qw_launch,_qw_step,_qw_value,_qw_density,_qw_real,_qw_half_height,_fw_reset,_fw_dial,_fw_fire,_fw_seal,_fw_answer,_fw_value,_fw_share,_rs_reset,_rs_energy,_rs_launch,_rs_step,_rs_value,_rs_density,_rs_zoom,_rs_curve,_rs_curve_packet,_sl_reset,_sl_controls,_sl_scramble,_sl_seed,_sl_launch,_sl_step,_sl_measure,_sl_value,_sl_image,_sl_screen,_sl_screen_theory,_sl_screen_ideal,_sl_particle
 
 play: web
 	$(PYTHON) -m http.server $(PORT) --bind 127.0.0.1 --directory dist
@@ -86,10 +91,11 @@ plots: quantum-wave-hopper
 	./quantum-wave-hopper --headless docs
 	./quantum-wave-hopper --gif docs/demo.gif
 	./quantum-wave-hopper --resonance docs
+	./quantum-wave-hopper --slits docs
 	head -c6 docs/demo.gif | grep -q GIF89a
 
 # Regenerates the plotted figures and the measured-values table of docs/theory (one command).
-theory_figs: src/wave.c src/observer.c src/resonance.c src/svg.c tests/theory_figs.c src/wave.h src/observer.h src/resonance.h src/svg.h
+theory_figs: src/wave.c src/observer.c src/resonance.c src/wave2d.c src/slits.c src/svg.c tests/theory_figs.c src/wave.h src/observer.h src/resonance.h src/wave2d.h src/slits.h src/svg.h
 	$(CC) $(CFLAGS) -o $@ $(filter %.c,$^) $(LDLIBS)
 
 theory-figs: theory_figs
@@ -101,5 +107,5 @@ theory-check:
 	python3 scripts/theory-check.py
 
 clean:
-	rm -f quantum-wave-hopper test_wave test_gif test_observer test_resonance test_farside story_bench theory_figs
+	rm -f quantum-wave-hopper test_wave test_gif test_observer test_resonance test_slits test_farside story_bench theory_figs
 	rm -rf build dist
