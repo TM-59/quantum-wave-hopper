@@ -130,6 +130,64 @@
         <p id="rs-time-note">Logarithmic scale: a straight falling line is an exponential decay</p></div>
     </div>
   </section>
+  <section id="two-slits" class="slits" aria-label="Two slits: interference of one wave">
+    <div class="rs-intro"><p class="eyebrow">03 / TWO SLITS</p><h2>One wave, two openings, <em>stripes.</em></h2>
+      <p>The same Schrödinger equation in two dimensions. A packet of wavelength λ meets a wall with two slits of width a, d apart. Each slit sends out its own wave; where the two arrive in step the screen is bright, where they arrive half a wavelength apart it is dark. Close one slit, or watch which slit the wave took, and the stripes go.</p></div>
+    <div class="layout">
+      <section class="panel" aria-label="Double-slit observation">
+        <div class="view-heading"><span><i class="live-dot" aria-hidden="true"></i> <span id="sl-mode">BOTH SLITS OPEN</span></span><span id="sl-clock">t = 0.0</span></div>
+        <div class="sl-views">
+          <canvas id="sl-wave" role="img" aria-label="The wave in two dimensions: brightness is the probability density, colour the phase; the wall with two slits is drawn in beige."></canvas>
+          <canvas id="sl-screen" role="img" aria-label="Intensity on a screen 100 away, measured from the wave, with the Fraunhofer prediction."></canvas>
+        </div>
+        <div class="legend" aria-label="Legend of the double-slit experiment">
+          <span><i class="key phase"></i> |ψ|² bright · colour = phase of ψ</span>
+          <span><i class="key barrier"></i> wall V = 60, 0.8 thick</span>
+          <span><i class="key transmitted"></i> screen, measured from the wave</span>
+          <span><i class="key fraunhofer"></i> Fraunhofer, slits lit by the packet</span>
+          <span><i class="key textbook"></i> textbook cos² · sinc² (even light)</span>
+          <span><i class="key particle"></i> particles, one at a time</span>
+        </div>
+        <div class="telemetry" aria-label="Double-slit readouts">
+          <div><span>FRINGE SPACING</span><strong id="sl-spacing">—</strong><small>theory <b id="sl-spacing-theory">—</b></small></div>
+          <div><span>VISIBILITY</span><strong id="sl-vis">—</strong><small>% · theory <b id="sl-vis-theory">—</b></small></div>
+          <div><span>THROUGH THE SLITS</span><strong id="sl-through">—</strong><small>%</small></div>
+          <div><span>PARTICLES</span><strong id="sl-count">0</strong><small>on the screen</small></div>
+        </div>
+      </section>
+      <aside class="control-panel" aria-label="Double-slit controls">
+        <p class="eyebrow">YOUR SLITS</p><h2>Set the gap.<br>Count the stripes.</h2>
+        <label for="sl-lambda">Wavelength λ <output id="sl-lambda-value" for="sl-lambda">2.5</output></label>
+        <input id="sl-lambda" type="range" min="2" max="4" step="0.1" value="2.5" disabled>
+        <div class="range-ends"><span>2.0</span><span>k = 2π/λ</span><span>4.0</span></div>
+        <label for="sl-sep">Slit separation d <output id="sl-sep-value" for="sl-sep">8.8</output></label>
+        <input id="sl-sep" type="range" min="4" max="14" step="0.4" value="8.8" disabled>
+        <div class="range-ends"><span>4.0</span><span>centre to centre</span><span>14.0</span></div>
+        <label for="sl-width">Slit width a <output id="sl-width-value" for="sl-width">2.2</output></label>
+        <input id="sl-width" type="range" min="1" max="3.8" step="0.4" value="2.2" disabled>
+        <div class="range-ends"><span>1.0</span><span>at least 1 of wall between</span><span>3.8</span></div>
+        <div id="sl-scramble-row" hidden>
+          <label for="sl-scramble">Random phase on slit B, ±Φ <output id="sl-scramble-value" for="sl-scramble">1.00 π</output></label>
+          <input id="sl-scramble" type="range" min="0" max="3.1416" step="0.0314" value="3.1416" disabled>
+          <div class="range-ends"><span>0</span><span>coherence sin Φ / Φ</span><span>π</span></div>
+        </div>
+        <button id="sl-send" class="primary" disabled><span>Send the wave</span> <span aria-hidden="true">→</span></button>
+        <div class="secondary-actions"><button id="sl-pause" disabled>Hold the run</button><span>256 × 256 grid · Δx 0.2</span></div>
+        <div class="experiment"><p class="eyebrow">OPEN, CLOSE OR WATCH</p>
+          <button id="sl-both" disabled>Both slits open <span aria-hidden="true">→</span></button>
+          <button id="sl-close-b" disabled>Close slit B <span aria-hidden="true">→</span></button>
+          <button id="sl-close-a" disabled>Close slit A <span aria-hidden="true">→</span></button>
+          <button id="sl-watch" disabled>Watch which slit <span aria-hidden="true">→</span></button>
+          <button id="sl-fire" disabled>Fire particles again <span aria-hidden="true">→</span></button>
+          <p id="sl-note">Bright fringes every λL/d on the screen.</p></div>
+      </aside>
+    </div>
+    <div class="analysis">
+      <div class="chart-panel"><div class="chart-heading"><h2>Particles, one at a time</h2><span><i class="dot-key"></i> one detected particle · <i class="line-key"></i> the measured intensity, scaled to the count</span></div>
+        <canvas id="sl-particles" role="img" aria-label="Particles landing on the screen one at a time and their histogram against the measured intensity"></canvas>
+        <p>Each landing point is drawn from the measured intensity by Born's rule with a counter-based draw in C (seed, particle number); the spread across the strip is decoration</p></div>
+    </div>
+  </section>
   <section id="field-notes" class="field-notes"><p class="eyebrow">FIELD NOTES</p>
     <div><h2>Below the top, still through.</h2><p>The packet's mean energy (0.50) is below a barrier of 0.6, yet about a third of it comes out on the far side. Raise the barrier and the transmitted share falls quickly; lower it and most of the packet passes.</p></div>
     <div><h3>The same solver as the terminal game</h3><p>Crank–Nicolson on 3,900 points (Δx = 0.1, Δt = 0.05), solved in C and compiled to WebAssembly. JavaScript only draws and reads inputs. The painting and Hop are illustrations: Hop rests on the highest point of the density, which is not a measured particle position.</p></div>

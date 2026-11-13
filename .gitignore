@@ -12,3 +12,4 @@ test_farside
 story_bench
 .story-check/
 test_resonance
+test_slits

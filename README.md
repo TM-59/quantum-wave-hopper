@@ -5,7 +5,7 @@ Steer a quantum wave packet at a potential barrier and tune how much tunnels thr
 
 ![demo](docs/demo.gif)
 
-**Theory handbook**: [docs/theory/](docs/theory/README.md) — 25 statements (the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission and tunnelling, the Crank–Nicolson scheme and its unitarity, the tridiagonal solve, accuracy, the hard walls, the program's rules, the rules of the story layer, and two barriers: transfer matrices, resonant tunnelling, the Breit–Wigner line and the lifetime ħ/Γ), each with its equation, assumptions, derivation, code, tests and a figure. `make theory-figs` regenerates the figures and the measured values; `make theory-check` checks the coverage table.
+**Theory handbook**: [docs/theory/](docs/theory/README.md) — 34 statements (the Schrödinger equation, the Gaussian packet, group velocity on a grid, the probability current, barrier transmission and tunnelling, the Crank–Nicolson scheme and its unitarity, the tridiagonal solve, accuracy, the hard walls, the program's rules, the rules of the story layer, and two barriers: transfer matrices, resonant tunnelling, the Breit–Wigner line and the lifetime ħ/Γ; and two dimensions: the alternating-direction Crank–Nicolson step, the far screen and Fraunhofer, the thick-wall limit, which path and coherence, Born's rule one particle at a time, absorbing layers), each with its equation, assumptions, derivation, code, tests and a figure. `make theory-figs` regenerates the figures and the measured values; `make theory-check` checks the coverage table.
 
 (理論の手引き: 式・前提・導出・実装箇所・検査を、全項目に図つきで説明します。)
 
@@ -62,6 +62,25 @@ The transmission is computed by transfer matrices (`layers_transmission`) and ch
 
 The theory is page 5 of the [handbook](docs/theory/05-double-barrier.md).
 
+## Two slits: interference of one wave
+
+The third experiment solves the Schrödinger equation in two dimensions (256 × 256 points, Δx = 0.2) with an alternating-direction Crank–Nicolson step: each factor is a Crank–Nicolson step along one axis, so the scheme stays exactly unitary (norm to 9e-14) and is second order in time. A packet of wavelength λ meets a wall with two slits; the screen 100 away is computed from the wave's transverse momentum and drawn against Fraunhofer's prediction. Choose λ, the separation d and the width a; close a slit, or watch which slit the wave took (a random phase on one path, whose spread Φ fades the fringes by sin Φ / Φ); then particles land one at a time by Born's rule and build the fringes.
+
+At λ = 2.5, d = 8.8, a = 2.2 the first bright fringe sits at 28.7 on the screen against L tan(asin(λ/d)) = 29.6 (λL/d = 28.4), the visibility is 0.999, and the screen is within 0.055 (L1, of 2) of Fraunhofer for the Gaussian-lit slits. Watching which slit drops the visibility to 0.14, the slope of the one-slit envelope.
+
+| Both slits open | Watching which slit | One slit |
+|---|---|---|
+| ![two slits](docs/images/two-slits.jpg) | ![watched](docs/images/two-slits-watched.jpg) | ![one slit](docs/images/two-slits-one.jpg) |
+
+![two slits on a phone](docs/images/two-slits-mobile.jpg)
+
+The terminal writes the screen for two slits, one slit and watched, and an animation of the wave with particles landing, with `./quantum-wave-hopper --slits docs`:
+
+![slits](docs/slits.svg)
+![slits animation](docs/slits.gif)
+
+The theory is page 6 of the [handbook](docs/theory/06-double-slit.md).
+
 ## Run
 
 ```sh
@@ -69,6 +88,7 @@ make && ./quantum-wave-hopper          # interactive
 ./quantum-wave-hopper --snapshot       # one frame, no terminal needed
 ./quantum-wave-hopper --gif docs/demo.gif  # scripted tunnelling run as an animated GIF
 ./quantum-wave-hopper --resonance docs     # two barriers: docs/resonance.svg and docs/resonance.csv
+./quantum-wave-hopper --slits docs         # double slit: docs/slits.svg, docs/slits.csv and docs/slits.gif
 make test && make plots                # unit tests and docs/*.svg
 docker build -t quantum-wave-hopper .  # same, reproducibly
 make web && make play                  # browser observatory at http://localhost:4216 (needs emcc)
@@ -101,12 +121,14 @@ A packet (σ = 10, k₀ = 1) hits a barrier of height 0.6 and width 2. Simulated
 
 `tests/test_resonance.c` checks the browser's two-barrier adapter: it finds the same resonances, clamps its controls, a packet on resonance passes as the packet theory says (1 %) while filling the gap, and the released wave decays at Γ₁ (3 %).
 
+`tests/test_slits.c` checks the 2D solver and the double slit: a free packet moves at the grid's group velocity and spreads across its motion as σ√(1+(t/2σ²)²), the norm stays 1 to 1e-12 through the slit wall and for Δt = 2, the error falls as Δt², the Fraunhofer quadrature equals the closed form, the screen matches Fraunhofer (fringe positions, first fringe within 5 %, visibility above 0.95), one slit has no fringes, watching which slit removes them and the unwatched sum equals the two-slit run, and 40,000 particles follow the screen within 4.5 standard deviations.
+
 `tests/test_farside.c` checks the story layer: the share it uses is the Wave API's bit for bit, the counter pools to it, every scene's numbers, the scene order, quiet heavy scenes, each scene's effect and both choices.
 
 `tests/test_observer.c` checks that the browser adapter evolves exactly the same ψ as the Wave API, conserves the norm, matches the packet-averaged theory within 1 % for V = 0.6, and that the "exactly half" height (bisection on the exact formula, V ≈ 0.5004) transmits 0.4989 in the solver. `scripts/smoke.cjs` compares WASM with the native trace (results in `docs/validation.json`).
 
 ## Roadmap
 
-See the Issues: 2D slit interference, time-dependent potentials.
+See the Issues: time-dependent potentials.
 
 Part of a series of small C physics toys, tracked in [algo-vis-panel](https://github.com/TM-59/algo-vis-panel/issues/6). MIT licensed.

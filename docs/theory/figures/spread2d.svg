@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" width="720" height="400" font-family="sans-serif" font-size="12">
+<rect width="720" height="400" fill="#ffffff"/>
+<text x="70" y="26" font-size="16" font-weight="bold" fill="#222">A free 2D packet spreads across its motion as the 1D law says</text>
+<line x1="70.0" y1="44" x2="70.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="344.0" x2="700" y2="344.0" stroke="#e3e3e3"/>
+<text x="70.0" y="362" text-anchor="middle" fill="#444">0</text>
+<text x="62" y="348.0" text-anchor="end" fill="#444">1.99</text>
+<line x1="196.0" y1="44" x2="196.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="284.0" x2="700" y2="284.0" stroke="#e3e3e3"/>
+<text x="196.0" y="362" text-anchor="middle" fill="#444">0.8</text>
+<text x="62" y="288.0" text-anchor="end" fill="#444">2.04</text>
+<line x1="322.0" y1="44" x2="322.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="224.0" x2="700" y2="224.0" stroke="#e3e3e3"/>
+<text x="322.0" y="362" text-anchor="middle" fill="#444">1.6</text>
+<text x="62" y="228.0" text-anchor="end" fill="#444">2.09</text>
+<line x1="448.0" y1="44" x2="448.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="164.0" x2="700" y2="164.0" stroke="#e3e3e3"/>
+<text x="448.0" y="362" text-anchor="middle" fill="#444">2.4</text>
+<text x="62" y="168.0" text-anchor="end" fill="#444">2.14</text>
+<line x1="574.0" y1="44" x2="574.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="104.0" x2="700" y2="104.0" stroke="#e3e3e3"/>
+<text x="574.0" y="362" text-anchor="middle" fill="#444">3.2</text>
+<text x="62" y="108.0" text-anchor="end" fill="#444">2.2</text>
+<line x1="700.0" y1="44" x2="700.0" y2="344" stroke="#e3e3e3"/>
+<line x1="70" y1="44.0" x2="700" y2="44.0" stroke="#e3e3e3"/>
+<text x="700.0" y="362" text-anchor="middle" fill="#444">4</text>
+<text x="62" y="48.0" text-anchor="end" fill="#444">2.25</text>
+<rect x="70" y="44" width="630" height="300" fill="none" stroke="#888"/>
+<text x="385" y="388" text-anchor="middle" fill="#222">t</text>
+<text transform="translate(16 194) rotate(-90)" text-anchor="middle" fill="#222">standard deviation in y</text>
+<polyline fill="none" stroke="#1f77b4" stroke-width="2" points="70.0,330.4 85.8,330.2 101.5,329.6 117.2,328.7 133.0,327.5 148.8,325.9 164.5,323.9 180.2,321.6 196.0,318.9 211.8,315.8 227.5,312.4 243.2,308.7 259.0,304.6 274.8,300.1 290.5,295.3 306.2,290.2 322.0,284.7 337.8,278.9 353.5,272.7 369.2,266.3 385.0,259.4 400.8,252.3 416.5,244.8 432.2,237.0 448.0,228.9 463.8,220.4 479.5,211.7 495.2,202.6 511.0,193.3 526.8,183.6 542.5,173.6 558.2,163.4 574.0,152.8 589.8,142.0 605.5,130.8 621.2,119.4 637.0,107.7 652.8,95.8 668.5,83.5 684.2,71.0 700.0,58.3 "/>
+<rect x="78" y="52" width="12" height="12" fill="#1f77b4"/><text x="96" y="63" fill="#222">width in y (2D solver)</text>
+<polyline fill="none" stroke="#d62728" stroke-width="2" points="70.0,330.4 85.8,330.2 101.5,329.6 117.2,328.7 133.0,327.5 148.8,325.9 164.5,323.9 180.2,321.5 196.0,318.8 211.8,315.8 227.5,312.4 243.2,308.6 259.0,304.5 274.8,300.1 290.5,295.2 306.2,290.1 322.0,284.6 337.8,278.8 353.5,272.6 369.2,266.1 385.0,259.3 400.8,252.1 416.5,244.6 432.2,236.8 448.0,228.6 463.8,220.2 479.5,211.4 495.2,202.3 511.0,192.9 526.8,183.2 542.5,173.2 558.2,163.0 574.0,152.4 589.8,141.5 605.5,130.3 621.2,118.9 637.0,107.2 652.8,95.2 668.5,82.9 684.2,70.4 700.0,57.6 "/>
+<rect x="228" y="52" width="12" height="12" fill="#d62728"/><text x="246" y="63" fill="#222">continuum formula</text>
+</svg>
