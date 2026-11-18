@@ -24,11 +24,14 @@ export const UI = {
     h: 'h',
     through: 'through',
     nights: ['half', 'a quarter', 'seven in ten', 'one in eight', 'half, alone'],
-    night: (n, name) => `Night ${n} of 5 · ${name}`,
-    bandText: (lo, hi) => `${lo}–${hi} % on the far side`,
-    shot: (k, n) => (n ? `${k} of ${n} ${'through'}` : '—'),
-    pool: (k, n) => (n ? `${k} / ${n} = ${((100 * k) / n).toFixed(1)} %` : 'not read tonight'),
-    hint: (v) => `Logbook, last year: V = ${v.toFixed(2)}`,
+    night: (/** @type {number} */ n, /** @type {string} */ name) => `Night ${n} of 5 · ${name}`,
+    bandText: (/** @type {number} */ lo, /** @type {number} */ hi) =>
+      `${lo}–${hi} % on the far side`,
+    shot: (/** @type {number} */ k, /** @type {number} */ n) =>
+      n ? `${k} of ${n} ${'through'}` : '—',
+    pool: (/** @type {number} */ k, /** @type {number} */ n) =>
+      n ? `${k} / ${n} = ${((100 * k) / n).toFixed(1)} %` : 'not read tonight',
+    hint: (/** @type {number} */ v) => `Logbook, last year: V = ${v.toFixed(2)}`,
     agnesOn: 'Agnes reads every seal again',
     agnesOff: 'Nobody reads it twice',
     line: 'Line',
@@ -47,7 +50,8 @@ export const UI = {
     ],
     goal: 'Turn the dial to set the barrier height. FIRE sends a shot of single particles at the Wall; the counter clicks for each one found on the far side. When the share at one setting sits inside tonight’s band, SEAL it. A seal outside the band fails the check.',
     hidden: 'The solver’s share is not shown in the story: you only see what the counter counts.',
-    summary: (h, f) => `Five nights: ${h.toFixed(2)} hours, ${f} failure${f === 1 ? '' : 's'}.`,
+    summary: (/** @type {number} */ h, /** @type {number} */ f) =>
+      `Five nights: ${h.toFixed(2)} hours, ${f} failure${f === 1 ? '' : 's'}.`,
     restart: 'Play it again',
     toObservatory: 'Back to the observatory',
     chart: 'Tonight’s shots',
@@ -76,12 +80,13 @@ export const UI = {
     h: '時間',
     through: '通過',
     nights: ['半分', '四分の一', '十のうち七', '八つに一つ', '半分、ひとりで'],
-    night: (n, name) => `夜 ${n}/5 · ${name}`,
-    bandText: (lo, hi) => `向こう側に ${lo}〜${hi} %`,
-    shot: (k, n) => (n ? `${n} 個中 ${k} 個が通過` : '—'),
-    pool: (k, n) =>
+    night: (/** @type {number} */ n, /** @type {string} */ name) => `夜 ${n}/5 · ${name}`,
+    bandText: (/** @type {number} */ lo, /** @type {number} */ hi) => `向こう側に ${lo}〜${hi} %`,
+    shot: (/** @type {number} */ k, /** @type {number} */ n) =>
+      n ? `${n} 個中 ${k} 個が通過` : '—',
+    pool: (/** @type {number} */ k, /** @type {number} */ n) =>
       n ? `${k} / ${n} = ${((100 * k) / n).toFixed(1)} %` : '今夜はまだ読んでいない',
-    hint: (v) => `日誌・去年: V = ${v.toFixed(2)}`,
+    hint: (/** @type {number} */ v) => `日誌・去年: V = ${v.toFixed(2)}`,
     agnesOn: 'アグネスが封をもう一度読む',
     agnesOff: '二度読む人はいない',
     line: '送電線',
@@ -100,7 +105,8 @@ export const UI = {
     ],
     goal: 'ダイヤルで障壁の高さを決める。「撃つ」で粒子をひとつずつ壁へ送り、向こう側で見つかるたびに計数器が鳴る。ひとつの設定の割合が今夜の幅に入ったら「封」。幅の外で封をすると検査で不合格になる。',
     hidden: '物語ではソルバの割合は見せない。見えるのは計数器が数えたものだけ。',
-    summary: (h, f) => `五つの夜: ${h.toFixed(2)} 時間、失敗 ${f} 回。`,
+    summary: (/** @type {number} */ h, /** @type {number} */ f) =>
+      `五つの夜: ${h.toFixed(2)} 時間、失敗 ${f} 回。`,
     restart: 'もう一度遊ぶ',
     toObservatory: '観測所に戻る',
     chart: '今夜の一発ごと',
@@ -115,6 +121,20 @@ export const NAMES = {
 };
 
 // who: 'agnes' | 'hop' | 'corvin' | '' (narration). Lines with `when` show only on that path: 'burned' / 'kept'.
+/** @typedef {{ en: string, ja: string }} Words */
+/** @typedef {'agnes' | 'hop' | 'corvin' | ''} Who */
+/** @typedef {[Who, Words] | [Who, Words, 'burned' | 'kept']} Line */
+/**
+ * @typedef {object} Scene
+ * @property {string} id
+ * @property {Words} title
+ * @property {boolean} [heavy]
+ * @property {Line[]} [lines]
+ * @property {Words[][]} [endings]
+ * @property {Words[]} [options]
+ * @property {Words} [note]
+ */
+/** @type {Scene[]} */
 export const SCENES = [
   {
     id: 'dusk',
