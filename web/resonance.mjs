@@ -1,7 +1,24 @@
 // The two-barrier experiment (M2): the C adapter src/resonance.c evolves the wave, finds the resonances and
 // computes every transmission; this module only reads plain numbers and draws them.
-const $ = (id) => document.getElementById(id);
-const FIELDS = [
+/** @param {string} id */
+const $ = (id) => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`#${id} is missing from index.html`);
+  return element;
+};
+/**
+ * The element of the given class (a missing or different element is a broken page, not a state to draw).
+ * @template {Element} T
+ * @param {new (...args: never[]) => T} type
+ * @param {string} id
+ * @returns {T}
+ */
+const $as = (type, id) => {
+  const element = $(id);
+  if (!(element instanceof type)) throw new Error(`#${id} is not a ${type.name}`);
+  return element;
+};
+const FIELDS = /** @type {const} */ ([
   'time',
   'mode',
   'energy',
@@ -31,7 +48,8 @@ const FIELDS = [
   'curveE0',
   'curveE1',
   'curvePoints',
-];
+]);
+/** @typedef {Record<(typeof FIELDS)[number], number>} RsState */
 const STEPS_PER_TICK = 120,
   TICK = 1 / 60,
   P_FLOOR = 1e-4;
@@ -44,27 +62,45 @@ const COLOURS = {
   level: '#e6e6e6',
 };
 
+/**
+ * @param {import('./physics.mjs').WaveEngine} engine
+ * @param {(desktop: number) => number} textPx
+ */
 export function startResonance(engine, textPx) {
-  let state,
-    density = [],
-    zoom = [],
-    curve = [],
-    curvePacket = [],
-    samples = [],
-    runs = [],
-    paused = true,
+  /** @type {RsState} */
+  let state;
+  /** @type {number[]} */
+  let density = [];
+  /** @type {number[]} */
+  let zoom = [];
+  /** @type {number[]} */
+  let curve = [];
+  /** @type {number[]} */
+  let curvePacket = [];
+  /** @type {{ time: number, pWell: number, pRight: number }[]} */
+  let samples = [];
+  /** @type {{ energy: number, pRight: number, theory: number }[]} */
+  const runs = [];
+  let paused = true,
     last = 0,
     accumulator = 0;
-  let texts = [],
-    recorded = false;
-  const read = () => Object.fromEntries(FIELDS.map((name, i) => [name, engine._rs_value(i)]));
+  /** @type {{ text: string, px: number }[]} */
+  let texts = [];
+  let recorded = false;
+  // Object.fromEntries cannot type its keys; FIELDS lists every key of RsState in the order of the C fields.
+  const read = () =>
+    /** @type {RsState} */ (
+      Object.fromEntries(FIELDS.map((name, i) => [name, engine._rs_value(i)]))
+    );
   function pull() {
     state = read();
     density = Array.from({ length: state.bins }, (_, i) => engine._rs_density(i));
     zoom = Array.from({ length: state.zoomSites }, (_, i) => engine._rs_zoom(i));
+    return state;
   }
-  const energyOf = (i) =>
+  const energyOf = (/** @type {number} */ i) =>
     state.curveE0 + ((state.curveE1 - state.curveE0) * i) / (state.curvePoints - 1);
+  /** @param {HTMLCanvasElement} canvas */
   function canvasSize(canvas) {
     const bounds = canvas.getBoundingClientRect(),
       dpr = Math.min(devicePixelRatio || 1, 2);
@@ -75,13 +111,16 @@ export function startResonance(engine, textPx) {
       canvas.height = h;
     }
     const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('the browser gave no 2D canvas context');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx, w: bounds.width, h: bounds.height };
   }
+  /** @param {string} name @param {number} px */
   const note = (name, px) => {
     texts = texts.filter((row) => row.text !== name).concat({ text: name, px });
   };
 
+  /** @param {number} mode @param {number} [energy] */
   function start(mode, energy) {
     if (mode === 1) engine._rs_reset(1);
     else {
@@ -95,6 +134,7 @@ export function startResonance(engine, textPx) {
     recorded = false;
     render();
   }
+  /** @param {number} e */
   function setEnergy(e) {
     engine._rs_reset(0);
     engine._rs_energy(e);
@@ -104,7 +144,8 @@ export function startResonance(engine, textPx) {
     recorded = false;
     render();
   }
-  $('rs-energy').oninput = (event) => setEnergy(Number(event.target.value));
+  const energyInput = $as(HTMLInputElement, 'rs-energy');
+  energyInput.oninput = () => setEnergy(Number(energyInput.value));
   $('rs-send').onclick = () => start(0);
   $('rs-e1').onclick = () => start(0, state.e1);
   $('rs-e2').onclick = () => start(0, state.e2);
@@ -117,7 +158,7 @@ export function startResonance(engine, textPx) {
   };
 
   function drawScene() {
-    const { ctx, w, h } = canvasSize($('rs-scene'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'rs-scene'));
     if (!w) return;
     const axis = textPx(10);
     note('scene axis', axis);
@@ -125,10 +166,10 @@ export function startResonance(engine, textPx) {
       right = 14,
       top = axis + 18,
       base = h - 2 * axis - 14;
-    const X = (x) =>
+    const X = (/** @type {number} */ x) =>
       left + ((x - state.viewMin) / (state.viewMax - state.viewMin)) * (w - left - right);
     const peak = Math.max(0.004, ...density),
-      Y = (d) => base - (d / peak) * (base - top) * 0.92;
+      Y = (/** @type {number} */ d) => base - (d / peak) * (base - top) * 0.92;
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${axis}px system-ui`;
     ctx.strokeStyle = '#ffffff40';
@@ -145,9 +186,10 @@ export function startResonance(engine, textPx) {
     ctx.textAlign = 'left';
     ctx.fillText(`|ψ|², top ${peak.toFixed(3)}`, left, top - 8);
     // The two barriers (each 1 wide, drawn at least 3 px) and the three regions of the density.
-    ctx.fillStyle = COLOURS.barrier + 'd0';
+    ctx.fillStyle = `${COLOURS.barrier}d0`;
     for (const x0 of [0, state.width + state.gap])
       ctx.fillRect(X(x0), top, Math.max(3, X(x0 + state.width) - X(x0)), base - top);
+    /** @type {[number, number, string][]} */
     const regions = [
       [state.viewMin, 0, COLOURS.before],
       [state.width, state.width + state.gap, COLOURS.well],
@@ -168,7 +210,7 @@ export function startResonance(engine, textPx) {
       if (!open) continue;
       ctx.lineTo(X(Math.min(to, state.viewMax)), base);
       ctx.closePath();
-      ctx.fillStyle = colour + '55';
+      ctx.fillStyle = `${colour}55`;
       ctx.fill();
       ctx.strokeStyle = colour;
       ctx.lineWidth = 2;
@@ -176,7 +218,7 @@ export function startResonance(engine, textPx) {
     }
   }
   function drawZoom() {
-    const { ctx, w, h } = canvasSize($('rs-zoom'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'rs-zoom'));
     if (!w) return;
     const axis = textPx(10);
     note('zoom axis', axis);
@@ -185,17 +227,17 @@ export function startResonance(engine, textPx) {
       top = axis + 18,
       base = h - 2 * axis - 14,
       vMax = 1.1;
-    const X = (x) =>
+    const X = (/** @type {number} */ x) =>
       left + ((x - state.zoomMin) / (state.zoomMax - state.zoomMin)) * (w - left - right);
-    const Yv = (v) => base - (v / vMax) * (base - top);
+    const Yv = (/** @type {number} */ v) => base - (v / vMax) * (base - top);
     const peak = Math.max(1e-4, ...zoom),
-      Yd = (d) => base - (d / peak) * (base - top) * 0.9;
+      Yd = (/** @type {number} */ d) => base - (d / peak) * (base - top) * 0.9;
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${axis}px system-ui`;
     // The well between the walls, the walls, the levels and the packet's energy on the energy axis (right).
-    ctx.fillStyle = COLOURS.well + '22';
+    ctx.fillStyle = `${COLOURS.well}22`;
     ctx.fillRect(X(state.width), top, X(state.width + state.gap) - X(state.width), base - top);
-    ctx.fillStyle = COLOURS.barrier + 'b0';
+    ctx.fillStyle = `${COLOURS.barrier}b0`;
     for (const x0 of [0, state.width + state.gap])
       ctx.fillRect(X(x0), Yv(state.height), X(x0 + state.width) - X(x0), base - Yv(state.height));
     ctx.setLineDash([2, 4]);
@@ -245,7 +287,7 @@ export function startResonance(engine, textPx) {
     ctx.fillText('close-up x', w - right, base + 2 * axis + 8);
   }
   function drawCurve() {
-    const { ctx, w, h } = canvasSize($('rs-curve'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'rs-curve'));
     if (!w) return;
     const small = textPx(9);
     note('curve labels', small);
@@ -253,9 +295,9 @@ export function startResonance(engine, textPx) {
       right = 12,
       top = 2 * small + 16,
       bottom = small + 22;
-    const X = (e) =>
+    const X = (/** @type {number} */ e) =>
         left + ((e - state.curveE0) / (state.curveE1 - state.curveE0)) * (w - left - right),
-      Y = (t) => top + (1 - t) * (h - top - bottom);
+      Y = (/** @type {number} */ t) => top + (1 - t) * (h - top - bottom);
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${small}px system-ui`;
     ctx.lineWidth = 1;
@@ -276,10 +318,12 @@ export function startResonance(engine, textPx) {
     ctx.textAlign = 'right';
     ctx.fillText('energy E', w - right, h - 2);
     // Resonances: the band E_n ± Γ_n / 2, and a label with its width and lifetime (E1 on the first line, E2 on the second).
-    [
+    /** @type {[number, number, string][]} */
+    const lines = [
       [state.e1, state.g1, 'E₁'],
       [state.e2, state.g2, 'E₂'],
-    ].forEach(([e, g, name], i) => {
+    ];
+    lines.forEach(([e, g, name], i) => {
       ctx.fillStyle = '#ffffff14';
       ctx.fillRect(X(e - g / 2), top, Math.max(2, X(e + g / 2) - X(e - g / 2)), h - top - bottom);
       ctx.fillStyle = '#e6e6e6';
@@ -321,7 +365,7 @@ export function startResonance(engine, textPx) {
     }
   }
   function drawTime() {
-    const { ctx, w, h } = canvasSize($('rs-time'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'rs-time'));
     if (!w) return;
     const small = textPx(9);
     note('time labels', small);
@@ -330,10 +374,10 @@ export function startResonance(engine, textPx) {
       top = small + 14,
       bottom = small + 22,
       tMax = Math.max(state.tMax, 1);
-    const ly = (p) => Math.log10(Math.max(p, P_FLOOR)),
+    const ly = (/** @type {number} */ p) => Math.log10(Math.max(p, P_FLOOR)),
       lo = Math.log10(P_FLOOR);
-    const X = (t) => left + (t / tMax) * (w - left - right),
-      Y = (p) => top + (ly(p) / lo) * (h - top - bottom);
+    const X = (/** @type {number} */ t) => left + (t / tMax) * (w - left - right),
+      Y = (/** @type {number} */ p) => top + (ly(p) / lo) * (h - top - bottom);
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${small}px system-ui`;
     ctx.lineWidth = 1;
@@ -358,10 +402,12 @@ export function startResonance(engine, textPx) {
     ctx.fillText('P [%], log scale', 4, top - 6);
     ctx.textAlign = 'right';
     ctx.fillText('time t', w - right, h - 2);
-    for (const [key, colour] of [
+    /** @type {['pWell' | 'pRight', string][]} */
+    const series = [
       ['pWell', COLOURS.well],
       ['pRight', COLOURS.beyond],
-    ]) {
+    ];
+    for (const [key, colour] of series) {
       ctx.strokeStyle = colour;
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -388,7 +434,7 @@ export function startResonance(engine, textPx) {
     ctx.setLineDash([]);
   }
   function render() {
-    $('rs-energy').value = state.energy;
+    energyInput.value = String(state.energy);
     $('rs-energy-value').textContent = state.energy.toFixed(3);
     $('rs-mode').textContent = state.mode ? 'RELEASED FROM THE WELL' : 'PACKET AT ONE ENERGY';
     $('rs-clock').textContent = `t = ${state.time.toFixed(1)}`;
@@ -403,12 +449,13 @@ export function startResonance(engine, textPx) {
       : 'The packet (σ = 20) holds a spread of energies; only the part inside the resonance line passes, so even on resonance about half gets through.';
     $('rs-pause').textContent =
       paused && state.time && !state.done ? 'Continue the run' : 'Hold the run';
-    $('rs-pause').disabled = state.done || (!state.time && paused);
+    $as(HTMLButtonElement, 'rs-pause').disabled = Boolean(state.done || (!state.time && paused));
     drawScene();
     drawZoom();
     drawCurve();
     drawTime();
   }
+  /** @param {number} timestamp */
   function frame(timestamp) {
     if (!last) last = timestamp;
     const dt = Math.min((timestamp - last) / 1000, 0.25);
@@ -440,9 +487,11 @@ export function startResonance(engine, textPx) {
   if (engine._rs_reset(0)) throw new Error('allocation');
   curve = Array.from({ length: engine._rs_value(28) }, (_, i) => engine._rs_curve(i));
   curvePacket = curve.map((_, i) => engine._rs_curve_packet(i));
-  pull();
-  samples = [{ time: 0, pWell: state.pWell, pRight: state.pRight }];
-  for (const id of ['rs-energy', 'rs-send', 'rs-e1', 'rs-e2', 'rs-release']) $(id).disabled = false;
+  const first = pull();
+  samples = [{ time: 0, pWell: first.pWell, pRight: first.pRight }];
+  energyInput.disabled = false;
+  for (const id of ['rs-send', 'rs-e1', 'rs-e2', 'rs-release'])
+    $as(HTMLButtonElement, id).disabled = false;
   // (the pause button is enabled by render while a run is going)
   render();
   requestAnimationFrame(frame);

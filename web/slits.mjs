@@ -1,7 +1,24 @@
 // The double-slit experiment (M3): the C adapter src/slits.c evolves the 2D wave (wave2d.c), paints the density,
 // measures the far-field screen and draws the particles by its counter; this module only reads numbers and draws.
-const $ = (id) => document.getElementById(id);
-const FIELDS = [
+/** @param {string} id */
+const $ = (id) => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`#${id} is missing from index.html`);
+  return element;
+};
+/**
+ * The element of the given class (a missing or different element is a broken page, not a state to draw).
+ * @template {Element} T
+ * @param {new (...args: never[]) => T} type
+ * @param {string} id
+ * @returns {T}
+ */
+const $as = (type, id) => {
+  const element = $(id);
+  if (!(element instanceof type)) throw new Error(`#${id} is not a ${type.name}`);
+  return element;
+};
+const FIELDS = /** @type {const} */ ([
   'time',
   'mode',
   'lambda',
@@ -32,7 +49,8 @@ const FIELDS = [
   'spacingMeasured',
   'measuredAt',
   'seed',
-];
+]);
+/** @typedef {Record<(typeof FIELDS)[number], number>} SlState */
 const STEPS_PER_TICK = 3,
   TICK = 1 / 60,
   MEASURE_EVERY = 15,
@@ -47,7 +65,7 @@ const COLOURS = {
   wall: '#f0e4c8',
 };
 // A visual jitter of a particle across the detector strip: a fixed hash of its number (decoration, not physics).
-const jitter = (n) => {
+const jitter = (/** @type {number} */ n) => {
   let z = ((n + 1) * 2654435761) >>> 0;
   z ^= z >>> 15;
   z = Math.imul(z, 2246822519) >>> 0;
@@ -55,22 +73,36 @@ const jitter = (n) => {
   return ((z >>> 0) % 1000) / 1000;
 };
 
+/**
+ * @param {import('./physics.mjs').WaveEngine} engine
+ * @param {(desktop: number) => number} textPx
+ */
 export function startSlits(engine, textPx) {
-  let state,
-    screen = [],
-    theory = [],
-    ideal = [],
-    particles = [],
-    paused = true,
+  /** @type {SlState} */
+  let state;
+  /** @type {number[]} */
+  let screen = [];
+  /** @type {number[]} */
+  let theory = [];
+  /** @type {number[]} */
+  let ideal = [];
+  /** @type {number[]} */
+  let particles = [];
+  let paused = true,
     last = 0,
     accumulator = 0,
     ticks = 0,
     firing = false;
+  /** @type {{ text: string, px: number }[]} */
   let texts = [];
   const offscreen = document.createElement('canvas');
   offscreen.width = 256;
   offscreen.height = 256;
-  const read = () => Object.fromEntries(FIELDS.map((name, i) => [name, engine._sl_value(i)]));
+  // Object.fromEntries cannot type its keys; FIELDS lists every key of SlState in the order of the C fields.
+  const read = () =>
+    /** @type {SlState} */ (
+      Object.fromEntries(FIELDS.map((name, i) => [name, engine._sl_value(i)]))
+    );
   function pullScreen() {
     screen = Array.from({ length: state.bins }, (_, i) => engine._sl_screen(i));
     theory = Array.from({ length: state.bins }, (_, i) => engine._sl_screen_theory(i));
@@ -79,10 +111,11 @@ export function startSlits(engine, textPx) {
   function paintImage() {
     const ptr = engine._sl_image();
     const pixels = new Uint8ClampedArray(engine.HEAPU8.buffer, ptr, 256 * 256 * 4);
-    offscreen
-      .getContext('2d')
-      .putImageData(new ImageData(new Uint8ClampedArray(pixels), 256, 256), 0, 0);
+    const offscreenCtx = offscreen.getContext('2d');
+    if (!offscreenCtx) throw new Error('the browser gave no 2D canvas context');
+    offscreenCtx.putImageData(new ImageData(new Uint8ClampedArray(pixels), 256, 256), 0, 0);
   }
+  /** @param {HTMLCanvasElement} canvas */
   function canvasSize(canvas) {
     const bounds = canvas.getBoundingClientRect(),
       dpr = Math.min(devicePixelRatio || 1, 2);
@@ -93,17 +126,24 @@ export function startSlits(engine, textPx) {
       canvas.height = h;
     }
     const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('the browser gave no 2D canvas context');
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     return { ctx, w: bounds.width, h: bounds.height };
   }
+  /** @param {string} name @param {number} px */
   const note = (name, px) => {
     texts = texts.filter((row) => row.text !== name).concat({ text: name, px });
   };
 
+  const lambdaInput = $as(HTMLInputElement, 'sl-lambda'),
+    sepInput = $as(HTMLInputElement, 'sl-sep'),
+    widthInput = $as(HTMLInputElement, 'sl-width'),
+    scrambleInput = $as(HTMLInputElement, 'sl-scramble');
   function clearParticles() {
     particles = [];
     firing = false;
   }
+  /** @param {number} [mode] */
   function start(mode) {
     engine._sl_reset(mode ?? state.mode);
     state = read();
@@ -117,9 +157,9 @@ export function startSlits(engine, textPx) {
   }
   function setControls() {
     engine._sl_controls(
-      Number($('sl-lambda').value),
-      Number($('sl-sep').value),
-      Number($('sl-width').value),
+      Number(lambdaInput.value),
+      Number(sepInput.value),
+      Number(widthInput.value),
     );
     state = read();
     pullScreen();
@@ -128,9 +168,9 @@ export function startSlits(engine, textPx) {
     paintImage();
     render();
   }
-  for (const id of ['sl-lambda', 'sl-sep', 'sl-width']) $(id).oninput = setControls;
-  $('sl-scramble').oninput = (event) => {
-    engine._sl_scramble(Number(event.target.value));
+  for (const input of [lambdaInput, sepInput, widthInput]) input.oninput = setControls;
+  scrambleInput.oninput = () => {
+    engine._sl_scramble(Number(scrambleInput.value));
     state = read();
     pullScreen();
     clearParticles();
@@ -156,7 +196,7 @@ export function startSlits(engine, textPx) {
   };
 
   function drawWave() {
-    const { ctx, w, h } = canvasSize($('sl-wave'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'sl-wave'));
     if (!w) return;
     const axis = textPx(10);
     note('slit wave axis', axis);
@@ -171,8 +211,8 @@ export function startSlits(engine, textPx) {
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(offscreen, ox, oy, size, size);
     const span = state.nx * state.dx,
-      X = (x) => ox + ((x - state.x0) / span) * size,
-      Y = (y) => oy + (1 - (y - state.y0) / span) * size;
+      X = (/** @type {number} */ x) => ox + ((x - state.x0) / span) * size,
+      Y = (/** @type {number} */ y) => oy + (1 - (y - state.y0) / span) * size;
     ctx.font = `${axis}px system-ui`;
     ctx.fillStyle = '#c9cfe3';
     ctx.textAlign = 'left';
@@ -189,7 +229,7 @@ export function startSlits(engine, textPx) {
       ctx.fillText('B', X(state.wallX + state.wallT) + 4, Y(-state.sep / 2) + axis / 3);
   }
   function drawScreen() {
-    const { ctx, w, h } = canvasSize($('sl-screen'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'sl-screen'));
     if (!w) return;
     const small = textPx(9);
     note('slit screen labels', small);
@@ -198,9 +238,9 @@ export function startSlits(engine, textPx) {
       top = small + 14,
       bottom = small + 14;
     const half = state.screenHalf,
-      Y = (y) => top + ((half - y) / (2 * half)) * (h - top - bottom);
+      Y = (/** @type {number} */ y) => top + ((half - y) / (2 * half)) * (h - top - bottom);
     const peak = Math.max(1e-9, ...theory, ...screen) * 1.08,
-      X = (v) => left + (v / peak) * (w - left - right);
+      X = (/** @type {number} */ v) => left + (v / peak) * (w - left - right);
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${small}px system-ui`;
     ctx.fillStyle = '#c9cfe3';
@@ -226,28 +266,35 @@ export function startSlits(engine, textPx) {
       ctx.stroke();
     }
     ctx.setLineDash([]);
-    const yOf = (i) => -half + ((i + 0.5) * 2 * half) / state.bins;
+    const yOf = (/** @type {number} */ i) => -half + ((i + 0.5) * 2 * half) / state.bins;
     if (state.measuredAt >= 0) {
       ctx.beginPath();
       ctx.moveTo(left, Y(yOf(0)));
-      screen.forEach((v, i) => ctx.lineTo(X(v), Y(yOf(i))));
+      screen.forEach((v, i) => {
+        ctx.lineTo(X(v), Y(yOf(i)));
+      });
       ctx.lineTo(left, Y(yOf(state.bins - 1)));
       ctx.closePath();
-      ctx.fillStyle = COLOURS.measured + '55';
+      ctx.fillStyle = `${COLOURS.measured}55`;
       ctx.fill();
       ctx.strokeStyle = COLOURS.measured;
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-    for (const [curve, colour, dash] of [
+    /** @type {[number[], string, number[]][]} */
+    const references = [
       [theory, COLOURS.theory, [6, 5]],
       [ideal, COLOURS.ideal, [2, 3]],
-    ]) {
+    ];
+    for (const [curve, colour, dash] of references) {
       ctx.setLineDash(dash);
       ctx.strokeStyle = colour;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      curve.forEach((v, i) => (i ? ctx.lineTo(X(v), Y(yOf(i))) : ctx.moveTo(X(v), Y(yOf(i)))));
+      curve.forEach((v, i) => {
+        if (i) ctx.lineTo(X(v), Y(yOf(i)));
+        else ctx.moveTo(X(v), Y(yOf(i)));
+      });
       ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -259,7 +306,7 @@ export function startSlits(engine, textPx) {
     ctx.fillText('intensity →', left + 4, h - 6);
   }
   function drawParticles() {
-    const { ctx, w, h } = canvasSize($('sl-particles'));
+    const { ctx, w, h } = canvasSize($as(HTMLCanvasElement, 'sl-particles'));
     if (!w) return;
     const small = textPx(9);
     note('slit particle labels', small);
@@ -269,13 +316,15 @@ export function startSlits(engine, textPx) {
       strip = Math.max(40, (h - top) * 0.32),
       base = h - small - 22;
     const half = state.screenHalf,
-      X = (y) => left + ((y + half) / (2 * half)) * (w - left - right);
+      X = (/** @type {number} */ y) => left + ((y + half) / (2 * half)) * (w - left - right);
     ctx.clearRect(0, 0, w, h);
     ctx.font = `${small}px system-ui`;
     ctx.fillStyle = '#0d1124';
     ctx.fillRect(left, top, w - left - right, strip);
     ctx.fillStyle = COLOURS.particle;
-    particles.forEach((y, n) => ctx.fillRect(X(y) - 1, top + 3 + jitter(n) * (strip - 6), 2, 2));
+    particles.forEach((y, n) => {
+      ctx.fillRect(X(y) - 1, top + 3 + jitter(n) * (strip - 6), 2, 2);
+    });
     // Histogram of the particles against the measured intensity scaled to the same count.
     const bins = 80,
       width = (2 * half) / bins,
@@ -286,8 +335,8 @@ export function startSlits(engine, textPx) {
     }
     const expected = screen.map((v) => v * particles.length * width);
     const peak = Math.max(1, ...counts, ...expected) * 1.1,
-      Y = (c) => base - (c / peak) * (base - top - strip - 10);
-    ctx.fillStyle = COLOURS.particle + 'aa';
+      Y = (/** @type {number} */ c) => base - (c / peak) * (base - top - strip - 10);
+    ctx.fillStyle = `${COLOURS.particle}aa`;
     counts.forEach((c, b) => {
       const x0 = X(-half + b * width);
       ctx.fillRect(x0 + 0.5, Y(c), Math.max(1, X(-half + (b + 1) * width) - x0 - 1), base - Y(c));
@@ -318,13 +367,13 @@ export function startSlits(engine, textPx) {
     ctx.fillText('screen position y', w - right, h - 2);
   }
   function render() {
-    $('sl-lambda').value = state.lambda;
+    lambdaInput.value = String(state.lambda);
     $('sl-lambda-value').textContent = state.lambda.toFixed(1);
-    $('sl-sep').value = state.sep;
+    sepInput.value = String(state.sep);
     $('sl-sep-value').textContent = state.sep.toFixed(1);
-    $('sl-width').value = state.width;
+    widthInput.value = String(state.width);
     $('sl-width-value').textContent = state.width.toFixed(1);
-    $('sl-scramble').value = state.scramble;
+    scrambleInput.value = String(state.scramble);
     $('sl-scramble-value').textContent = `${(state.scramble / Math.PI).toFixed(2)} π`;
     $('sl-scramble-row').hidden = state.mode !== 3;
     $('sl-mode').textContent = MODES[state.mode];
@@ -345,12 +394,13 @@ export function startSlits(engine, textPx) {
           : 'One slit open: a single broad envelope and no fringes. The light below the slit leans the wave toward the dim side, which Fraunhofer leaves out.';
     $('sl-pause').textContent =
       paused && state.time && !state.done ? 'Continue the run' : 'Hold the run';
-    $('sl-pause').disabled = state.done || (!state.time && paused);
-    $('sl-fire').disabled = !state.done;
+    $as(HTMLButtonElement, 'sl-pause').disabled = Boolean(state.done || (!state.time && paused));
+    $as(HTMLButtonElement, 'sl-fire').disabled = !state.done;
     drawWave();
     drawScreen();
     drawParticles();
   }
+  /** @param {number} timestamp */
   function frame(timestamp) {
     if (!last) last = timestamp;
     const dt = Math.min((timestamp - last) / 1000, 0.25);
@@ -394,18 +444,9 @@ export function startSlits(engine, textPx) {
   state = read();
   pullScreen();
   paintImage();
-  for (const id of [
-    'sl-lambda',
-    'sl-sep',
-    'sl-width',
-    'sl-scramble',
-    'sl-send',
-    'sl-both',
-    'sl-close-a',
-    'sl-close-b',
-    'sl-watch',
-  ])
-    $(id).disabled = false;
+  for (const input of [lambdaInput, sepInput, widthInput, scrambleInput]) input.disabled = false;
+  for (const id of ['sl-send', 'sl-both', 'sl-close-a', 'sl-close-b', 'sl-watch'])
+    $as(HTMLButtonElement, id).disabled = false;
   render();
   requestAnimationFrame(frame);
   document.addEventListener('visibilitychange', () => {
