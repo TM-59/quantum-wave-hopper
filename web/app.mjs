@@ -1,10 +1,34 @@
 import createWave from './physics.mjs';
-import { SCENES, UI, NAMES } from './story.mjs';
 import { startResonance } from './resonance.mjs';
 import { startSlits } from './slits.mjs';
+import { NAMES, SCENES, UI } from './story.mjs';
 
-const $ = (id) => document.getElementById(id);
-const names = [
+/** @param {string} id */
+const $ = (id) => {
+  const element = document.getElementById(id);
+  if (!element) throw new Error(`#${id} is missing from index.html`);
+  return element;
+};
+/**
+ * The element as the given class (a missing or different element is a broken page, not a state to draw).
+ * @template {Element} T
+ * @param {new (...args: never[]) => T} type
+ * @param {Element | null} element
+ * @returns {T}
+ */
+const as = (type, element) => {
+  if (!(element instanceof type)) throw new Error(`expected a ${type.name}`);
+  return element;
+};
+/** @param {string} id */
+const $button = (id) => as(HTMLButtonElement, $(id));
+/** @param {string} id */
+const $input = (id) => as(HTMLInputElement, $(id));
+/** @param {string} selector */
+const $query = (selector) => as(HTMLElement, document.querySelector(selector));
+const heightButtons = () =>
+  Array.from(document.querySelectorAll('[data-height]'), (button) => as(HTMLButtonElement, button));
+const names = /** @type {const} */ ([
   'time',
   'left',
   'height',
@@ -23,9 +47,10 @@ const names = [
   'xMax',
   'bins',
   'done',
-];
-const scene = $('scene'),
-  plot = $('plot');
+]);
+/** @typedef {Record<(typeof names)[number], number>} QwState */
+const scene = as(HTMLCanvasElement, $('scene')),
+  plot = as(HTMLCanvasElement, $('plot'));
 const backdrop = new Image(),
   hopper = new Image();
 backdrop.src = 'art/observatory.jpg';
@@ -41,16 +66,21 @@ const notes = [
   "Height 0.6 sits above the packet's mean energy of about 0.50. Classically nothing passes; the computed share is about 35 %. Controls are locked during the experiment.",
   'The height is found by bisection on the exact barrier formula so that theory gives 50 %. The solver is not told the answer. Controls are locked during the experiment.',
 ];
-let engine,
-  state,
-  paused = true,
+/** @type {import('./physics.mjs').WaveEngine} */
+let engine;
+/** @type {QwState} */
+let state;
+let paused = true,
   last = 0,
-  accumulator = 0,
-  samples = [],
-  density = [],
-  real = [];
+  accumulator = 0;
+/** @type {{ time: number, pRight: number }[]} */
+let samples = [];
+/** @type {number[]} */
+let density = [];
+/** @type {number[]} */
+let real = [];
 // The story (mode 3): the C nights of src/farside.c. Field names follow enum FarsideValue in src/farside.h.
-const storyNames = [
+const storyNames = /** @type {const} */ ([
   'night',
   'scene',
   'power',
@@ -80,19 +110,36 @@ const storyNames = [
   'line',
   'charge',
   'darkWaits',
-];
+]);
+/** @typedef {Record<(typeof storyNames)[number], number>} FsState */
 const STORY_STEPS = 60; // solver steps per tick while a shot's packet is shown (3,300 steps in under a second)
-let story = false,
-  fs = null,
-  shownScene = -2,
-  heavyLog = [],
-  shotLog = [],
-  animating = false;
+let story = false;
+/** @type {FsState} */
+let fs;
+let shownScene = -2;
+/** @type {{ id: string, banner: number, loud: number, bannerShown: boolean }[]} */
+let heavyLog = [];
+/** @type {{ night: number, dial: number, k: number, n: number }[]} */
+let shotLog = [];
+let animating = false;
+/** @type {'en' | 'ja'} */
 let lang = new URLSearchParams(location.search).get('lang') === 'ja' ? 'ja' : 'en';
-const t$ = (key) => UI[lang][key];
+/** @typedef {typeof UI.en} Strings */
+/** @type {Record<'en' | 'ja', Strings>} */
+const TEXT = UI;
+/**
+ * @template {keyof Strings} K
+ * @param {K} key
+ * @returns {Strings[K]}
+ */
+const t$ = (key) => TEXT[lang][key];
+// Object.fromEntries cannot type its keys; the name lists hold every key in the order of the C fields.
 const readStory = () =>
-  Object.fromEntries(storyNames.map((name, i) => [name, engine._fw_value(i)]));
-const read = () => Object.fromEntries(names.map((name, i) => [name, engine._qw_value(i)]));
+  /** @type {FsState} */ (
+    Object.fromEntries(storyNames.map((name, i) => [name, engine._fw_value(i)]))
+  );
+const read = () =>
+  /** @type {QwState} */ (Object.fromEntries(names.map((name, i) => [name, engine._qw_value(i)])));
 const goalReached = () => !story && state.done && Math.abs(state.pRight - 0.5) < 0.02;
 
 function pull() {
@@ -103,14 +150,14 @@ function pull() {
   real = Array.from({ length: n }, (_, i) => engine._qw_real(i));
 }
 function syncControls() {
-  $('height').value = state.height;
-  $('left').value = state.left;
+  $input('height').value = String(state.height);
+  $input('left').value = String(state.left);
   $('height-value').textContent = state.height.toFixed(2);
   $('left-value').textContent = state.left.toFixed(0);
   const locked = story ? fs.scene >= 0 || fs.night >= 5 || animating : state.mode !== 0;
-  $('height').disabled = locked;
-  $('left').disabled = locked || story;
-  document.querySelectorAll('[data-height]').forEach((button) => (button.disabled = locked));
+  $input('height').disabled = locked;
+  $input('left').disabled = locked || story;
+  for (const button of heightButtons()) button.disabled = locked;
 }
 function reset(mode = 0, run = false) {
   story = mode === 3;
@@ -146,6 +193,7 @@ function launch() {
   accumulator = 0;
   render();
 }
+/** @param {number} left @param {number} height */
 function controls(left, height) {
   if (!engine) return;
   if (story) {
@@ -179,19 +227,19 @@ $('lang').onclick = () => {
     render();
   } else applyLang();
 };
-$('height').oninput = (event) => controls(state.left, Number(event.target.value));
-$('left').oninput = (event) => controls(Number(event.target.value), state.height);
-document.querySelectorAll('[data-height]').forEach((button) => {
+$input('height').oninput = () => controls(state.left, Number($input('height').value));
+$input('left').oninput = () => controls(Number($input('left').value), state.height);
+for (const button of heightButtons()) {
   button.onclick = () =>
     controls(state.left, Math.round((state.height + Number(button.dataset.height)) * 100) / 100);
-});
+}
 document.addEventListener('keydown', (event) => {
   if (
     !engine ||
     event.ctrlKey ||
     event.metaKey ||
     event.altKey ||
-    event.target.matches('input,textarea,select')
+    (event.target instanceof Element && event.target.matches('input,textarea,select'))
   )
     return;
   const key = event.key.toLowerCase();
@@ -218,11 +266,15 @@ window.addEventListener('blur', stop);
 
 // On a phone (narrow, short or touch-first screen) every canvas label is at least 14 CSS px.
 const phone = matchMedia('(max-width:720px),(max-height:500px),(pointer:coarse)');
-const textPx = (desktop) => (phone.matches ? Math.max(14, desktop) : desktop);
-let canvasTexts = [],
-  launched = false,
-  resonance = null,
-  slits = null;
+const textPx = (/** @type {number} */ desktop) => (phone.matches ? Math.max(14, desktop) : desktop);
+/** @type {{ text: string, px: number }[]} */
+let canvasTexts = [];
+let launched = false;
+/** @type {ReturnType<typeof startResonance> | null} */
+let resonance = null;
+/** @type {ReturnType<typeof startSlits> | null} */
+let slits = null;
+/** @param {HTMLCanvasElement} canvas */
 function canvasSize(canvas) {
   const bounds = canvas.getBoundingClientRect(),
     dpr = Math.min(devicePixelRatio || 1, 2);
@@ -233,9 +285,16 @@ function canvasSize(canvas) {
     canvas.height = h;
   }
   const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('the browser gave no 2D canvas context');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   return { ctx, w: bounds.width, h: bounds.height };
 }
+/**
+ * @param {CanvasRenderingContext2D} ctx
+ * @param {HTMLImageElement} img
+ * @param {number} w
+ * @param {number} h
+ */
 function cover(ctx, img, w, h) {
   const scale = Math.max(w / img.naturalWidth, h / img.naturalHeight);
   ctx.drawImage(
@@ -246,7 +305,7 @@ function cover(ctx, img, w, h) {
     img.naturalHeight * scale,
   );
 }
-const binX = (i) => state.xMin + i + 0.5; // 10 grid points of 0.1 per bin
+const binX = (/** @type {number} */ i) => state.xMin + i + 0.5; // 10 grid points of 0.1 per bin
 
 // ------------------------------------------------------------------ the story: shots, seals, scenes and readouts
 function fire() {
@@ -282,22 +341,32 @@ function applyLang() {
   $('story-label').textContent = t$('storyButton');
   $('story-eyebrow').textContent = t$('storyEyebrow');
   $('story-note').textContent = t$('storyNote');
-  for (const [id, key] of [
+  /** @type {[string, 'battery' | 'hours' | 'failures' | 'band' | 'lastShot' | 'pooled'][]} */
+  const labels = [
     ['l-battery', 'battery'],
     ['l-hours', 'hours'],
     ['l-failures', 'failures'],
     ['l-band', 'band'],
     ['l-last', 'lastShot'],
     ['l-pool', 'pooled'],
-  ])
-    $(id).textContent = t$(key);
+  ];
+  for (const [id, key] of labels) $(id).textContent = t$(key);
   $('u-power').textContent = t$('shots');
   $('u-hours').textContent = t$('h');
   $('seal-label').textContent = t$('seal');
 }
+/**
+ * @param {import('./story.mjs').Scene} sc
+ * @returns {import('./story.mjs').Line[]}
+ */
 function storyLines(sc) {
-  if (sc.endings) return sc.endings[fs.ending === 1 ? 1 : 0].map((words) => ['', words]);
-  return sc.lines.filter(([, , when]) => !when || (when === 'burned') === (fs.frost === 0));
+  if (sc.endings)
+    return sc.endings[fs.ending === 1 ? 1 : 0].map((words) => {
+      /** @type {import('./story.mjs').Line} */
+      const line = ['', words];
+      return line;
+    });
+  return (sc.lines ?? []).filter(([, , when]) => !when || (when === 'burned') === (fs.frost === 0));
 }
 function showScene() {
   const box = $('story-scene'),
@@ -349,7 +418,7 @@ function showScene() {
   }
   const options = $('story-options');
   options.replaceChildren();
-  const labels = sc.endings ? [{ en: UI.en.restart, ja: UI.ja.restart }] : sc.options;
+  const labels = sc.endings ? [{ en: UI.en.restart, ja: UI.ja.restart }] : (sc.options ?? []);
   labels.forEach((label, option) => {
     const button = document.createElement('button');
     button.textContent = label[lang];
@@ -365,8 +434,9 @@ function showScene() {
   }
   $('banner').hidden = true;
   box.scrollTop = 0;
-  options.firstChild.focus({ preventScroll: true });
+  as(HTMLButtonElement, options.firstElementChild).focus({ preventScroll: true });
 }
+/** @param {number} option */
 function answer(option) {
   if (!story || fs.scene < 0) return;
   if (SCENES[fs.scene].endings) {
@@ -389,7 +459,7 @@ function storyStatus() {
 }
 function renderStory() {
   $('s-power').textContent = fs.power.toFixed(fs.power % 1 ? 2 : 0);
-  $('story-data').firstElementChild.dataset.red = String(fs.power < fs.redLine);
+  as(HTMLElement, $('story-data').firstElementChild).dataset.red = String(fs.power < fs.redLine);
   $('power-bar').style.width = `${Math.min(100, (fs.power / 10) * 100)}%`;
   $('s-hours').textContent = fs.hours.toFixed(2);
   $('s-failures').textContent = String(fs.failures);
@@ -411,13 +481,13 @@ function renderStory() {
   banner.dataset.kind = kind >= 3 && kind <= 4 ? 'fail' : kind >= 5 ? 'wait' : 'ok';
   // A scene on screen always hides the banner; the C nights also clear it when a heavy scene opens.
   banner.hidden = !kind || fs.scene >= 0;
-  document.querySelector('.scene-label').hidden = fs.scene >= 0;
+  $query('.scene-label').hidden = fs.scene >= 0;
   $('launch-label').textContent = t$('fire');
   $('launch').setAttribute('aria-label', t$('fire'));
   $('seal').setAttribute('aria-label', t$('seal'));
   const busy = fs.scene >= 0 || fs.night >= 5 || animating;
-  $('launch').disabled = busy;
-  $('seal').disabled = busy || !fs.poolN;
+  $button('launch').disabled = busy;
+  $button('seal').disabled = busy || !fs.poolN;
 }
 
 function drawScene() {
@@ -440,9 +510,10 @@ function drawScene() {
   g.addColorStop(1, '#0b0f22e6');
   ctx.fillStyle = g;
   ctx.fillRect(0, top - 30, w, h - top + 30);
-  const X = (x) => left + ((x - VIEW[0]) / (VIEW[1] - VIEW[0])) * (w - left - right);
-  const Yd = (d) => base - Math.min(d / DENSITY_MAX, 1) * (base - top);
-  const Yv = (v) => base - Math.min(v / V_MAX, 1) * (base - top);
+  const X = (/** @type {number} */ x) =>
+    left + ((x - VIEW[0]) / (VIEW[1] - VIEW[0])) * (w - left - right);
+  const Yd = (/** @type {number} */ d) => base - Math.min(d / DENSITY_MAX, 1) * (base - top);
+  const Yv = (/** @type {number} */ v) => base - Math.min(v / V_MAX, 1) * (base - top);
   // Axes and units.
   const axis = textPx(10);
   canvasTexts = [{ text: 'axis labels', px: axis }];
@@ -488,10 +559,12 @@ function drawScene() {
   ctx.fillText(`V = ${state.height.toFixed(2)}`, (bx0 + bx1) / 2, Yv(state.height) - 6);
   // Density, split into the reflected (left of barrier) and transmitted (right) parts.
   const split = state.left + state.width;
-  for (const [side, colour] of [
+  /** @type {[number, string][]} */
+  const sides = [
     [-1, '#e69f00'],
     [1, '#56b4e9'],
-  ]) {
+  ];
+  for (const [side, colour] of sides) {
     ctx.beginPath();
     let open = false;
     density.forEach((d, i) => {
@@ -507,7 +580,7 @@ function drawScene() {
     const lastX = side < 0 ? Math.min(split, VIEW[1]) : VIEW[1];
     ctx.lineTo(X(lastX), base);
     ctx.closePath();
-    ctx.fillStyle = colour + '55';
+    ctx.fillStyle = `${colour}55`;
     ctx.fill();
     ctx.strokeStyle = colour;
     ctx.lineWidth = 2;
@@ -568,8 +641,8 @@ function drawPlot() {
   canvasTexts = canvasTexts
     .filter((row) => row.text !== 'chart labels')
     .concat({ text: 'chart labels', px: small });
-  const X = (t) => left + (t / tMax) * (w - left - right),
-    Y = (p) => top + (1 - p) * (h - top - bottom);
+  const X = (/** @type {number} */ t) => left + (t / tMax) * (w - left - right),
+    Y = (/** @type {number} */ p) => top + (1 - p) * (h - top - bottom);
   ctx.clearRect(0, 0, w, h);
   ctx.font = `${small}px system-ui`;
   ctx.lineWidth = 1;
@@ -618,8 +691,8 @@ function drawShots() {
   const night = Math.min(fs.night, 4),
     shots = shotLog.filter((row) => row.night === night),
     count = Math.max(10, shots.length);
-  const X = (i) => left + ((i + 0.5) / count) * (w - left - right),
-    Y = (p) => top + (1 - p) * (h - top - bottom);
+  const X = (/** @type {number} */ i) => left + ((i + 0.5) / count) * (w - left - right),
+    Y = (/** @type {number} */ p) => top + (1 - p) * (h - top - bottom);
   ctx.clearRect(0, 0, w, h);
   ctx.font = `${small}px system-ui`;
   ctx.lineWidth = 1;
@@ -664,10 +737,10 @@ function render() {
   if (story) renderStory();
   else {
     $('banner').hidden = true;
-    document.querySelector('.scene-label').hidden = false;
+    $query('.scene-label').hidden = false;
     $('launch-label').textContent = 'Launch the packet';
     $('launch').removeAttribute('aria-label');
-    $('launch').disabled = !engine;
+    $button('launch').disabled = !engine;
   }
   applyLang();
   $('mode-name').textContent = story ? t$('mode') : modeNames[state.mode];
@@ -693,7 +766,7 @@ function render() {
   $('status').textContent = label;
   $('goal').hidden = !goalReached();
   $('pause').textContent = paused ? 'Resume' : 'Pause';
-  $('pause').disabled = !engine || story || state.done || (!state.time && paused);
+  $button('pause').disabled = Boolean(!engine || story || state.done || (!state.time && paused));
   $('experiment-note').textContent = notes[story ? 0 : state.mode];
   if (story) {
     $('tr').textContent = $('re').textContent = $('th').textContent = '—';
@@ -701,7 +774,12 @@ function render() {
   syncControls();
   drawScene();
   drawPlot();
-  window.qwView = {
+  window.qwView = view();
+}
+/** The read-only view of the observatory for the smoke test (scripts/smoke.cjs). */
+/** @typedef {ReturnType<typeof view>} QwView */
+function view() {
+  return {
     snapshot: {
       ...state,
       paused,
@@ -721,6 +799,7 @@ function render() {
     engine,
   };
 }
+/** @param {number} timestamp */
 function frame(timestamp) {
   if (!last) last = timestamp;
   const dt = Math.min((timestamp - last) / 1000, 0.25);
@@ -747,12 +826,13 @@ function frame(timestamp) {
   requestAnimationFrame(frame);
 }
 // Read-only hook for the phone playability check: canvas text sizes in CSS px, the first goal, the next tap.
-const fromScene = (el) => {
+const fromScene = (/** @type {Element} */ el) => {
   const c = scene.getBoundingClientRect(),
     r = el.getBoundingClientRect();
   return { x: r.left + r.width / 2 - c.left, y: r.top + r.height / 2 - c.top };
 };
-window.__tmGate = {
+/** @typedef {typeof gate} Gate */
+const gate = {
   version: 1,
   get logical() {
     const r = scene.getBoundingClientRect();
@@ -777,6 +857,7 @@ window.__tmGate = {
   player: () => null,
   hint: () => (!engine || launched ? null : fromScene($('launch'))),
 };
+window.__tmGate = gate;
 phone.addEventListener('change', () => {
   if (engine) render();
   if (resonance) resonance.rerender();
@@ -789,12 +870,12 @@ for (const img of [backdrop, hopper])
 new ResizeObserver(() => {
   if (engine) render();
 }).observe(scene);
-$('height').disabled = $('left').disabled = true;
-document.querySelectorAll('[data-height]').forEach((button) => (button.disabled = true));
+$input('height').disabled = $input('left').disabled = true;
+for (const button of heightButtons()) button.disabled = true;
 try {
   engine = await createWave();
   if (engine._qw_reset(0)) throw new Error('allocation');
-  for (const id of ['launch', 'standard', 'half', 'story']) $(id).disabled = false;
+  for (const id of ['launch', 'standard', 'half', 'story']) $button(id).disabled = false;
   reset();
   requestAnimationFrame(frame);
   resonance = startResonance(engine, textPx);
