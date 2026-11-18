@@ -7,6 +7,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { execFileSync } = require('node:child_process');
 const root = path.resolve('dist');
+/** @type {Record<string, string>} */
 const mime = {
   '.html': 'text/html',
   '.mjs': 'text/javascript',
@@ -18,7 +19,7 @@ const mime = {
 const server = http.createServer((req, res) => {
   const file = path.resolve(
     root,
-    '.' + decodeURIComponent(new URL(req.url, 'http://localhost').pathname),
+    `.${decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname)}`,
   );
   const target = file === root ? path.join(root, 'index.html') : file;
   if (!target.startsWith(root + path.sep)) {
@@ -33,15 +34,30 @@ const server = http.createServer((req, res) => {
     }
   });
 });
-let browser,
-  checks = 0;
+/** @type {import('playwright').Browser | undefined} */
+let browser;
+let checks = 0;
+/** @param {unknown} value @param {string} message */
 const check = (value, message) => {
   assert.ok(value, message);
   checks++;
 };
+/** @typedef {import('playwright').Page} Page */
+/** @param {Page} page */
 const snapshot = (page) => page.evaluate(() => window.qwView.snapshot);
+/**
+ * The snapshot of a page in the story, whose fs holds the night's numbers.
+ * @param {Page} page
+ */
+const storySnapshot = async (page) => {
+  const s = await snapshot(page);
+  if (!s.fs) throw new Error('the page is not in the story');
+  return { ...s, fs: s.fs };
+};
+/** @param {Page} page @param {string} name */
 const capture = (page, name) =>
   page.screenshot({ path: `docs/images/${name}.jpg`, type: 'jpeg', quality: 86, fullPage: true });
+/** @param {Page} page @param {string} url */
 async function ready(page, url) {
   await page.goto(url);
   await page.waitForFunction(() => window.qwView?.snapshot?.artReady);
@@ -195,12 +211,21 @@ async function compareSlits() {
 
 // The story "The Far Side": play five nights through the real controls. The test reads the solver's share per dial step
 // (fw_share) only to choose a setting quickly; the page never shows it.
+/**
+ * @param {Page} page
+ * @param {{ frost: number, fall: number }} choices
+ * @param {string[]} [shots]
+ * @param {boolean} [tap]
+ */
 async function playStory(page, choices, shots = [], tap = false) {
-  const press = async (name) => (tap ? page.locator(name).tap() : page.locator(name).click());
-  const seen = new Set(),
-    heavySeen = [];
+  const press = async (/** @type {string} */ name) =>
+    tap ? page.locator(name).tap() : page.locator(name).click();
+  /** @type {Set<string>} */
+  const seen = new Set();
+  /** @type {{ id: string, banner: boolean, kind: number, cls: string | null }[]} */
+  const heavySeen = [];
   for (let guard = 0; guard < 600; guard++) {
-    const s = await snapshot(page);
+    const s = await storySnapshot(page);
     if (s.sceneId) {
       if (!seen.has(s.sceneId)) {
         seen.add(s.sceneId);
@@ -232,6 +257,7 @@ async function playStory(page, choices, shots = [], tap = false) {
     const step = await page.evaluate(() => {
       const { engine } = window.qwView,
         f = window.qwView.snapshot.fs;
+      if (!f) throw new Error('the page is not in the story');
       let best = 0,
         gap = 9;
       for (let k = 0; k <= 30; k++) {
@@ -261,19 +287,24 @@ async function run() {
   fs.mkdirSync('docs/images', { recursive: true });
   await new Promise((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', resolve);
+    server.listen(0, '127.0.0.1', () => resolve(null));
   });
-  const origin = `http://127.0.0.1:${server.address().port}`;
+  const address = server.address();
+  if (!address || typeof address === 'string') throw new Error('the local server has no port');
+  const origin = `http://127.0.0.1:${address.port}`;
   browser = await chromium.launch({
     headless: true,
     args: ['--no-sandbox', '--enable-unsafe-swiftshader'],
   });
-  const errors = [],
-    external = [];
+  /** @type {string[]} */
+  const errors = [];
+  /** @type {string[]} */
+  const external = [];
   const context = await browser.newContext({
     viewport: { width: 1440, height: 1050 },
     deviceScaleFactor: 1,
   });
+  /** @param {Page} page */
   const track = (page) => {
     page.on('pageerror', (error) => errors.push(error.message));
     page.on('console', (msg) => {
@@ -295,7 +326,7 @@ async function run() {
 
   const page = await context.newPage();
   track(page);
-  await ready(page, origin + '/');
+  await ready(page, `${origin}/`);
   const initial = await snapshot(page);
   check(
     initial.paused && initial.time === 0 && Math.abs(initial.norm - 1) < 1e-12,
@@ -367,10 +398,13 @@ async function run() {
   // Two barriers: tune to the first resonance, watch the probability pile up between the walls and pass.
   const rs = () => page.evaluate(() => window.rsView.snapshot);
   // Element shots keep a margin of the page around the section, so its right edge is not mistaken for a cut.
+  /** @param {string} target @param {string} name */
   const shoot = async (target, name, p = page) => {
     const raw = await p.locator(target).boundingBox(),
-      margin = 24,
-      width = p.viewportSize().width;
+      viewport = p.viewportSize(),
+      margin = 24;
+    if (!raw || !viewport) throw new Error(`${target} is not on screen`);
+    const width = viewport.width;
     const scroll = await p.evaluate(() => ({ x: scrollX, y: scrollY })),
       box = { ...raw, x: raw.x + scroll.x, y: raw.y + scroll.y };
     await p.screenshot({
@@ -528,7 +562,7 @@ async function run() {
 
   // The story: dusk opens on the reading panel; the real keys fire a shot and seal; both endings by the real buttons.
   await page.evaluate(() => scrollTo(0, 0));
-  await page.goto(origin + '/?seed=5');
+  await page.goto(`${origin}/?seed=5`);
   await page.waitForFunction(() => window.qwView?.snapshot?.artReady);
   await page.clock.install();
   await page.getByRole('button', { name: 'Play The Far Side' }).click();
@@ -540,17 +574,18 @@ async function run() {
   await capture(page, 'story-dusk');
   await page.locator('#story-options button').first().click();
   await page.keyboard.press(' ');
-  s = await snapshot(page);
+  let night = await storySnapshot(page);
   check(
-    s.fs.shots === 1 && s.fs.lastN === 60 && s.animating,
-    `Space fires a shot of 60 particles (${s.fs.lastN})`,
+    night.fs.shots === 1 && night.fs.lastN === 60 && night.animating,
+    `Space fires a shot of 60 particles (${night.fs.lastN})`,
   );
   await page.clock.runFor(1500);
-  s = await snapshot(page);
+  night = await storySnapshot(page);
   check(
-    !s.animating &&
-      s.done &&
-      s.pRight === (await page.evaluate((d) => window.qwView.engine._fw_share(d), s.fs.dial)),
+    !night.animating &&
+      night.done &&
+      night.pRight ===
+        (await page.evaluate((d) => window.qwView.engine._fw_share(d), night.fs.dial)),
     "the shot's packet ends on the solver's own share for that height",
   );
   check(
@@ -597,7 +632,7 @@ async function run() {
     `second play: scenes in order ${cells.seen.join()}`,
   );
   // Japanese: the same scene in the other language.
-  await page.goto(origin + '/?seed=5&lang=ja');
+  await page.goto(`${origin}/?seed=5&lang=ja`);
   await page.waitForFunction(() => window.qwView?.snapshot?.artReady);
   await page.clock.install();
   await page.locator('#story').click();
@@ -613,7 +648,7 @@ async function run() {
   });
   const mobile = await mobileContext.newPage();
   track(mobile);
-  await ready(mobile, origin + '/');
+  await ready(mobile, `${origin}/`);
   await mobile.getByRole('button', { name: 'Raise the barrier' }).tap();
   check(Math.abs((await snapshot(mobile)).height - 0.65) < 1e-12, 'touch reaches C');
   await mobile.getByRole('button', { name: 'Lower the barrier' }).tap();
@@ -627,16 +662,16 @@ async function run() {
   );
   for (const el of await mobile.locator('button:visible').all()) {
     const rect = await el.boundingBox();
-    check(rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
+    check(rect && rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
   }
   // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
   const sizes = () => {
     const out = { dom: 99, where: '', canvas: 99 };
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    for (let node; (node = walker.nextNode()); ) {
-      if (!node.textContent.trim()) continue;
-      const el = node.parentElement,
-        style = getComputedStyle(el),
+    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+      const el = node.parentElement;
+      if (!(node.textContent ?? '').trim() || !el) continue;
+      const style = getComputedStyle(el),
         box = el.getBoundingClientRect();
       if (
         style.display === 'none' ||
@@ -705,12 +740,15 @@ async function run() {
   );
   for (const el of await mobile.locator('button:visible').all()) {
     const rect = await el.boundingBox();
-    check(rect.width >= 44 && rect.height >= 44, 'landscape buttons have 44px touch target');
+    check(
+      rect && rect.width >= 44 && rect.height >= 44,
+      'landscape buttons have 44px touch target',
+    );
   }
 
   // The story on a phone: the reading panel and the night's readouts, portrait and landscape.
   await mobile.setViewportSize({ width: 390, height: 844 });
-  await mobile.goto(origin + '/?seed=7');
+  await mobile.goto(`${origin}/?seed=7`);
   await mobile.waitForFunction(() => window.qwView?.snapshot?.artReady);
   await mobile.clock.install();
   await mobile.locator('#story').tap();
@@ -731,7 +769,7 @@ async function run() {
     );
     for (const el of await mobile.locator('button:visible').all()) {
       const rect = await el.boundingBox();
-      check(rect.width >= 44 && rect.height >= 44, `story ${w}x${h} buttons 44px`);
+      check(rect && rect.width >= 44 && rect.height >= 44, `story ${w}x${h} buttons 44px`);
     }
   }
   await mobile.setViewportSize({ width: 390, height: 844 });
@@ -740,7 +778,7 @@ async function run() {
   await mobile.clock.runFor(1500);
   size = await mobile.evaluate(sizes);
   check(
-    (await snapshot(mobile)).fs.shots === 1 && size.dom >= 14 && size.canvas >= 14,
+    (await storySnapshot(mobile)).fs.shots === 1 && size.dom >= 14 && size.canvas >= 14,
     `story night by touch, text ${size.dom}/${size.canvas}px`,
   );
   await mobile.evaluate(() => scrollTo(0, 0));
@@ -751,7 +789,7 @@ async function run() {
   const fallback = await context.newPage();
   track(fallback);
   await fallback.route('**/art/**', (route) => route.fulfill({ status: 404, body: '' }));
-  await fallback.goto(origin + '/');
+  await fallback.goto(`${origin}/`);
   await fallback.waitForFunction(() => window.qwView?.snapshot);
   await fallback.clock.install();
   await fallback.getByRole('button', { name: 'Launch the packet' }).click();
@@ -766,7 +804,7 @@ async function run() {
   // Solver failure is a visible, noninteractive error state.
   const broken = await context.newPage();
   await broken.route('**/physics.wasm', (route) => route.fulfill({ status: 200, body: '' }));
-  await broken.goto(origin + '/');
+  await broken.goto(`${origin}/`);
   await broken.getByText('Wave solver unavailable — reload to retry').waitFor();
   check(
     (await broken.locator('#launch').isDisabled()) &&
@@ -820,7 +858,7 @@ async function run() {
       .filter((file) => file.endsWith('.jpg'))
       .sort(),
   };
-  fs.writeFileSync('docs/validation.json', JSON.stringify(result, null, 2) + '\n');
+  fs.writeFileSync('docs/validation.json', `${JSON.stringify(result, null, 2)}\n`);
   console.log(JSON.stringify(result, null, 2));
 }
 run()
