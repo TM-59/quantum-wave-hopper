@@ -492,8 +492,11 @@ footer {
 footer > span:last-child {
   color: var(--muted);
 }
-[hidden] {
-  display: none !important;
+/* The hidden attribute beats the display of these classes by specificity: [hidden] alone is weaker than a class. */
+[hidden],
+.primary[hidden],
+.story-data[hidden] {
+  display: none;
 }
 @media (max-width: 1000px) {
   .topbar,
@@ -700,6 +703,27 @@ footer > span:last-child {
     line-height: 1.7;
   }
 }
+/* Rules on the same elements as the #story-* rules below come first, in ascending specificity. */
+.telemetry small b {
+  font-weight: 600;
+  color: var(--ink);
+}
+.story-data .bar b {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.story-data [data-red="true"] .bar b {
+  background: #d55e00;
+}
+.rs-intro .eyebrow {
+  color: var(--muted);
+  margin: 0 0 10px;
+}
+.rs-intro h2 {
+  font-size: 32px;
+  margin-bottom: 12px;
+}
 /* The story "The Far Side": a reading panel over the observation, the night's readouts, banners. */
 .top-actions {
   display: flex;
@@ -847,14 +871,6 @@ footer > span:last-child {
   margin-top: 7px;
   overflow: hidden;
 }
-.story-data .bar b {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-}
-.story-data [data-red="true"] .bar b {
-  background: #d55e00;
-}
 #s-notes {
   grid-column: 1 / -1;
   margin: 4px 17px 0;
@@ -929,14 +945,6 @@ body[data-mode="story"] #chart-key {
 .rs-intro {
   max-width: 860px;
   margin-bottom: 22px;
-}
-.rs-intro .eyebrow {
-  color: var(--muted);
-  margin: 0 0 10px;
-}
-.rs-intro h2 {
-  font-size: 32px;
-  margin-bottom: 12px;
 }
 .rs-intro h2 em {
   color: var(--accent);
@@ -1069,10 +1077,6 @@ body[data-mode="story"] #chart-key {
   height: 8px;
   border-radius: 50%;
   background: var(--warm);
-}
-.telemetry small b {
-  font-weight: 600;
-  color: var(--ink);
 }
 #sl-particles {
   display: block;
