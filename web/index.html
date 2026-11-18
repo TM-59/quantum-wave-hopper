@@ -30,22 +30,22 @@
         <div class="scene-label"><span id="status" role="status">Loading the wave solver…</span><small>Painted backdrop is decoration · curves are the computed density</small></div>
         <div id="goal" hidden>Half through — within ±2 %</div>
         <div id="banner" role="status" hidden></div>
-        <section id="story-scene" aria-live="polite" hidden><p class="eyebrow" id="story-night"></p><h2 id="story-title"></h2><div id="story-text"></div><div id="story-options"></div></section>
+        <section id="story-scene" aria-live="polite" hidden><p class="eyebrow" id="story-night"></p><h2 id="story-title">The Far Side</h2><div id="story-text"></div><div id="story-options"></div></section>
       </div>
-      <div class="legend" aria-label="Legend">
+      <section class="legend" aria-label="Legend">
         <span><i class="key reflected"></i> reflected |ψ|² (x &lt; barrier)</span>
         <span><i class="key transmitted"></i> transmitted |ψ|² (x &gt; barrier)</span>
         <span><i class="key real"></i> Re ψ</span>
         <span><i class="key barrier"></i> barrier V (right axis)</span>
         <span><i class="key energy"></i> mean energy ⟨E⟩</span>
-      </div>
-      <div class="telemetry" aria-label="Measured probabilities">
+      </section>
+      <section class="telemetry" aria-label="Measured probabilities">
         <div><span>TRANSMITTED</span><strong id="tr">—</strong><small>%</small></div>
         <div><span>REFLECTED</span><strong id="re">—</strong><small>%</small></div>
         <div><span>THEORY T</span><strong id="th">—</strong><small>%</small></div>
         <div><span>NORM ∫|ψ|²</span><strong id="norm">—</strong><small>1</small></div>
-      </div>
-      <div id="story-data" class="story-data" aria-label="The night's readouts" hidden>
+      </section>
+      <section id="story-data" class="story-data" aria-label="The night's readouts" hidden>
         <div><span id="l-battery">BATTERY</span><strong id="s-power">—</strong><small id="u-power">shots</small><i class="bar"><b id="power-bar"></b></i></div>
         <div><span id="l-hours">HOURS</span><strong id="s-hours">—</strong><small id="u-hours">h</small></div>
         <div><span id="l-failures">FAILURES</span><strong id="s-failures">—</strong></div>
@@ -53,26 +53,26 @@
         <div><span id="l-last">LAST SHOT</span><strong id="s-last" class="small-strong">—</strong></div>
         <div><span id="l-pool">AT THIS SETTING</span><strong id="s-pool" class="small-strong">—</strong></div>
         <p id="s-notes"></p>
-      </div>
+      </section>
     </section>
     <aside class="control-panel" aria-label="Barrier controls">
       <p class="eyebrow">YOUR BARRIER</p><h2>Place it.<br>Raise it.</h2>
       <label for="height">Barrier height V <output id="height-value" for="height">0.60</output></label>
       <input id="height" type="range" min="0" max="1.5" step="0.05" value="0.6">
       <div class="range-ends"><span>0</span><span>packet ⟨E⟩ ≈ 0.50</span><span>1.5</span></div>
-      <div class="adjust"><button data-height="-0.05" aria-label="Lower the barrier">− <kbd>S</kbd></button><button data-height="0.05" aria-label="Raise the barrier">+ <kbd>W</kbd></button></div>
+      <div class="adjust"><button type="button" data-height="-0.05" aria-label="Lower the barrier">− <kbd>S</kbd></button><button type="button" data-height="0.05" aria-label="Raise the barrier">+ <kbd>W</kbd></button></div>
       <label for="left">Barrier position x <output id="left-value" for="left">0</output></label>
       <input id="left" type="range" min="-40" max="60" step="2" value="0">
       <div class="range-ends"><span>−40</span><span><kbd>A</kbd> / <kbd>D</kbd></span><span>60</span></div>
       <p class="control-note">Width is fixed at 2. Units: ħ = m = 1. Moving the barrier after the packet has passed changes nothing that already happened.</p>
-      <button id="launch" class="primary" disabled><span id="launch-label">Launch the packet</span> <span aria-hidden="true">→</span></button>
-      <button id="seal" class="primary seal" hidden><span id="seal-label">Seal this setting</span> <kbd>E</kbd></button>
-      <div class="secondary-actions"><button id="pause" disabled>Pause</button><span><kbd>Space</kbd> launch · <kbd>P</kbd> pause</span></div>
+      <button type="button" id="launch" class="primary" disabled><span id="launch-label">Launch the packet</span> <span aria-hidden="true">→</span></button>
+      <button type="button" id="seal" class="primary seal" hidden><span id="seal-label">Seal this setting</span> <kbd>E</kbd></button>
+      <div class="secondary-actions"><button type="button" id="pause" disabled>Pause</button><span><kbd>Space</kbd> launch · <kbd>P</kbd> pause</span></div>
       <div class="experiment"><p class="eyebrow">OR WATCH AN EXPERIMENT</p>
-        <button id="standard" disabled>Standard barrier V = 0.6 <span aria-hidden="true">→</span></button>
-        <button id="half" disabled>Exactly half (theory) <span aria-hidden="true">→</span></button>
+        <button type="button" id="standard" disabled>Standard barrier V = 0.6 <span aria-hidden="true">→</span></button>
+        <button type="button" id="half" disabled>Exactly half (theory) <span aria-hidden="true">→</span></button>
         <p class="eyebrow" id="story-eyebrow">OR PLAY THE STORY</p>
-        <button id="story" disabled><span id="story-label">Play The Far Side</span> <span aria-hidden="true">→</span></button>
+        <button type="button" id="story" disabled><span id="story-label">Play The Far Side</span> <span aria-hidden="true">→</span></button>
         <p id="story-note" class="story-note">Five nights on the ridge before the power line is cut.</p>
         <p id="experiment-note">Your barrier, your packet. Launch it and read the split on the right of the barrier.</p></div>
     </aside>
@@ -92,32 +92,32 @@
           <canvas id="rs-scene" role="img" aria-label="Probability density of the packet against position from -200 to 200, with the two barriers."></canvas>
           <canvas id="rs-zoom" role="img" aria-label="Close-up of the two barriers: the density between them, the packet energy and the two resonance energies."></canvas>
         </div>
-        <div class="legend" aria-label="Legend of the two-barrier experiment">
+        <section class="legend" aria-label="Legend of the two-barrier experiment">
           <span><i class="key reflected"></i> before the pair (x &lt; 0)</span>
           <span><i class="key well"></i> between the barriers (1 ≤ x &lt; 5)</span>
           <span><i class="key transmitted"></i> beyond the pair (x ≥ 6)</span>
           <span><i class="key barrier"></i> barriers V = 1</span>
           <span><i class="key energy"></i> packet energy E</span>
           <span><i class="key level"></i> resonance energies E₁, E₂</span>
-        </div>
-        <div class="telemetry" aria-label="Two-barrier readouts">
+        </section>
+        <section class="telemetry" aria-label="Two-barrier readouts">
           <div><span>THROUGH</span><strong id="rs-tr">—</strong><small>%</small></div>
           <div><span>BETWEEN THE WALLS</span><strong id="rs-well">—</strong><small>%</small></div>
           <div><span>THEORY, THIS PACKET</span><strong id="rs-th">—</strong><small>%</small></div>
           <div><span>PLANE WAVE T(E)</span><strong id="rs-plane">—</strong><small>%</small></div>
-        </div>
+        </section>
       </section>
       <aside class="control-panel" aria-label="Energy controls">
         <p class="eyebrow">YOUR ENERGY</p><h2>Find the<br>open door.</h2>
         <label for="rs-energy">Packet energy E <output id="rs-energy-value" for="rs-energy">0.300</output></label>
         <input id="rs-energy" type="range" min="0.05" max="0.75" step="0.005" value="0.3" disabled>
         <div class="range-ends"><span>0.05</span><span>barrier top V = 1</span><span>0.75</span></div>
-        <button id="rs-send" class="primary" disabled><span>Send a packet at E</span> <span aria-hidden="true">→</span></button>
-        <div class="secondary-actions"><button id="rs-pause" disabled>Hold the run</button><span>width 1 · gap 4 · σ = 20</span></div>
+        <button type="button" id="rs-send" class="primary" disabled><span>Send a packet at E</span> <span aria-hidden="true">→</span></button>
+        <div class="secondary-actions"><button type="button" id="rs-pause" disabled>Hold the run</button><span>width 1 · gap 4 · σ = 20</span></div>
         <div class="experiment"><p class="eyebrow">OR TUNE TO A RESONANCE</p>
-          <button id="rs-e1" disabled><span id="rs-e1-label">Resonance 1</span> <span aria-hidden="true">→</span></button>
-          <button id="rs-e2" disabled><span id="rs-e2-label">Resonance 2</span> <span aria-hidden="true">→</span></button>
-          <button id="rs-release" disabled>Release a wave from the well <span aria-hidden="true">→</span></button>
+          <button type="button" id="rs-e1" disabled><span id="rs-e1-label">Resonance 1</span> <span aria-hidden="true">→</span></button>
+          <button type="button" id="rs-e2" disabled><span id="rs-e2-label">Resonance 2</span> <span aria-hidden="true">→</span></button>
+          <button type="button" id="rs-release" disabled>Release a wave from the well <span aria-hidden="true">→</span></button>
           <p id="rs-note">The packet (σ = 20) holds a spread of energies; only the part inside the resonance line passes, so even on resonance about half gets through.</p></div>
       </aside>
     </div>
@@ -140,20 +140,20 @@
           <canvas id="sl-wave" role="img" aria-label="The wave in two dimensions: brightness is the probability density, colour the phase; the wall with two slits is drawn in beige."></canvas>
           <canvas id="sl-screen" role="img" aria-label="Intensity on a screen 100 away, measured from the wave, with the Fraunhofer prediction."></canvas>
         </div>
-        <div class="legend" aria-label="Legend of the double-slit experiment">
+        <section class="legend" aria-label="Legend of the double-slit experiment">
           <span><i class="key phase"></i> |ψ|² bright · colour = phase of ψ</span>
           <span><i class="key barrier"></i> wall V = 60, 0.8 thick</span>
           <span><i class="key transmitted"></i> screen, measured from the wave</span>
           <span><i class="key fraunhofer"></i> Fraunhofer, slits lit by the packet</span>
           <span><i class="key textbook"></i> textbook cos² · sinc² (even light)</span>
           <span><i class="key particle"></i> particles, one at a time</span>
-        </div>
-        <div class="telemetry" aria-label="Double-slit readouts">
+        </section>
+        <section class="telemetry" aria-label="Double-slit readouts">
           <div><span>FRINGE SPACING</span><strong id="sl-spacing">—</strong><small>theory <b id="sl-spacing-theory">—</b></small></div>
           <div><span>VISIBILITY</span><strong id="sl-vis">—</strong><small>% · theory <b id="sl-vis-theory">—</b></small></div>
           <div><span>THROUGH THE SLITS</span><strong id="sl-through">—</strong><small>%</small></div>
           <div><span>PARTICLES</span><strong id="sl-count">0</strong><small>on the screen</small></div>
-        </div>
+        </section>
       </section>
       <aside class="control-panel" aria-label="Double-slit controls">
         <p class="eyebrow">YOUR SLITS</p><h2>Set the gap.<br>Count the stripes.</h2>
@@ -171,14 +171,14 @@
           <input id="sl-scramble" type="range" min="0" max="3.1416" step="0.0314" value="3.1416" disabled>
           <div class="range-ends"><span>0</span><span>coherence sin Φ / Φ</span><span>π</span></div>
         </div>
-        <button id="sl-send" class="primary" disabled><span>Send the wave</span> <span aria-hidden="true">→</span></button>
-        <div class="secondary-actions"><button id="sl-pause" disabled>Hold the run</button><span>256 × 256 grid · Δx 0.2</span></div>
+        <button type="button" id="sl-send" class="primary" disabled><span>Send the wave</span> <span aria-hidden="true">→</span></button>
+        <div class="secondary-actions"><button type="button" id="sl-pause" disabled>Hold the run</button><span>256 × 256 grid · Δx 0.2</span></div>
         <div class="experiment"><p class="eyebrow">OPEN, CLOSE OR WATCH</p>
-          <button id="sl-both" disabled>Both slits open <span aria-hidden="true">→</span></button>
-          <button id="sl-close-b" disabled>Close slit B <span aria-hidden="true">→</span></button>
-          <button id="sl-close-a" disabled>Close slit A <span aria-hidden="true">→</span></button>
-          <button id="sl-watch" disabled>Watch which slit <span aria-hidden="true">→</span></button>
-          <button id="sl-fire" disabled>Fire particles again <span aria-hidden="true">→</span></button>
+          <button type="button" id="sl-both" disabled>Both slits open <span aria-hidden="true">→</span></button>
+          <button type="button" id="sl-close-b" disabled>Close slit B <span aria-hidden="true">→</span></button>
+          <button type="button" id="sl-close-a" disabled>Close slit A <span aria-hidden="true">→</span></button>
+          <button type="button" id="sl-watch" disabled>Watch which slit <span aria-hidden="true">→</span></button>
+          <button type="button" id="sl-fire" disabled>Fire particles again <span aria-hidden="true">→</span></button>
           <p id="sl-note">Bright fringes every λL/d on the screen.</p></div>
       </aside>
     </div>

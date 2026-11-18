@@ -15,7 +15,9 @@ C11 + libm の 1 次元時間依存シュレーディンガー方程式ソルバ
   対応表(文 → 頁 → 図 → 関数 → テスト)の欠け・リンク切れ・消えた関数名・未掲載の公開関数で落ちる。法則・規則を足したら同じ PR で頁と図と表を足す。
   README の「34 statements」は表の行数と合わせる。
 - スマホ(幅 720px 以下・高さ 500px 以下・タッチ主体)では DOM と canvas の全文字を 14 CSS px 以上、操作を 44 CSS px 以上にする。`make smoke` が 390×844 と 844×390 で実測する。`window.__tmGate` は読み取り専用。
-- CI は PR の軽量ゲート(docker build で `make test && make plots`)のみ。WASM ビルド・撮影・E2E はローカル専用。
+- 整形・lint・型検査は `make fmt` / `make check-style`(clang-format・clang-tidy・-Werror、Ruff・mypy strict、Biome・tsc --checkJs。版は uv.lock と package-lock.json)。抑制コメント・除外は置かない。
+  `web/physics.d.mts` は `make web` が作る `dist/physics.mjs` の型(Makefile の EXPORTED_FUNCTIONS と C の宣言に合わせて手で保つ)。C ライブラリのヘッダーが既定の場所に無い端末は `TIDY_EXTRA="-isystem <dir>"`。
+- CI は PR の軽量ゲート(docker build で `make test && make plots`、`make check-style`)のみ。WASM ビルド・撮影・E2E はローカル専用。
 - 公開 repo。コミット・PR に生成 AI の署名、私的な情報を入れない(公開前に private 情報の検査と差分の目視を行う)。
 - 実画面は `docs/images/`(`make smoke` が撮る)、原画と生成指示・採否は `assets/art/` と `docs/art-direction.md`。
 
