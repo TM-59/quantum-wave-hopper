@@ -74,7 +74,7 @@ web: dist/physics.mjs
 	cp web/index.html web/style.css web/app.mjs web/story.mjs web/resonance.mjs web/slits.mjs dist/
 	mkdir -p dist/art
 	cp assets/art/* dist/art/
-	$(PYTHON) scripts/check-size.py
+	$(PYTHON) scripts/check_size.py
 
 dist/physics.mjs: src/wave.c src/observer.c src/wave.h src/observer.h src/farside.c src/farside.h src/farside_web.c src/resonance.c src/resonance.h src/wave2d.c src/wave2d.h src/slits.c src/slits.h
 	mkdir -p dist
@@ -107,7 +107,7 @@ theory-figs: theory_figs
 
 # Fails when a statement of docs/theory has no figure, a link is broken, or a referenced function or test is gone.
 theory-check:
-	python3 scripts/theory-check.py
+	python3 scripts/theory_check.py
 
 clean:
 	rm -f quantum-wave-hopper test_wave test_gif test_observer test_resonance test_slits test_farside story_bench theory_figs
@@ -124,13 +124,13 @@ TM_UNIT_BINS := test_wave test_gif test_observer test_resonance test_slits test_
 
 .PHONY: test-unit check test-trace test-perf test-e2e tm-ctest tm-deps test-tm-unit test-tm-trace test-tm-perf test-tm-e2e
 test-unit:
-	$(TM_TEST_PYTHON) scripts/local-test.py unit
+	$(TM_TEST_PYTHON) scripts/local_test.py unit
 
 check:
-	$(TM_TEST_PYTHON) scripts/local-test.py all
+	$(TM_TEST_PYTHON) scripts/local_test.py all
 
 test-trace test-perf test-e2e:
-	$(TM_TEST_PYTHON) scripts/local-test.py $(@:test-%=%)
+	$(TM_TEST_PYTHON) scripts/local_test.py $(@:test-%=%)
 
 tm-ctest:
 	mkdir -p test-results
