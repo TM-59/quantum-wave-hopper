@@ -10,9 +10,9 @@
 
 static inline uint64_t mix64(uint64_t z)
 {
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
-    z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-    return z ^ (z >> 31);
+    z = (z ^ (z >> 30U)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27U)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31U);
 }
 
 /* Seed and index are stirred separately before they are combined (no XOR or sums of raw keys). */
@@ -27,7 +27,7 @@ typedef struct {
 static inline double rng_unit(Rng *r)
 {
     r->s += 0x9e3779b97f4a7c15ULL;
-    return (double)(mix64(r->s) >> 11) / 9007199254740992.0;
+    return (double)(mix64(r->s) >> 11U) / 9007199254740992.0;
 }
 
 /* An operator who reads the panel, not the code. Each night it starts at the logbook's setting when
@@ -88,10 +88,12 @@ static inline int op_decide(Operator *p, Farside *c)
         p->margin = 0.7 + 0.9 * rng_unit(&p->rng);
         int hint = farside_hint(c);
         p->hunch = hint >= 0 ? hint : op_nearest(night) + (int)(5.0 * rng_unit(&p->rng)) - 2;
-        if (p->hunch < 0)
+        if (p->hunch < 0) {
             p->hunch = 0;
-        if (p->hunch >= F_STEPS)
+        }
+        if (p->hunch >= F_STEPS) {
             p->hunch = F_STEPS - 1;
+        }
         farside_dial(c, p->hunch);
     }
     double target = farside_target(night), tol = farside_tol(night);
@@ -99,36 +101,42 @@ static inline int op_decide(Operator *p, Farside *c)
         int s = c->dial;
         if (c->ruled[s]) { /* the check rejected this setting: away from it */
             farside_dial(c, s + c->ruled[s]);
-            if (c->dial == s)
+            if (c->dial == s) {
                 return OP_FIRE;
+            }
             continue;
         }
         double r = op_read(c, s);
-        if (r < 0.0)
+        if (r < 0.0) {
             return OP_FIRE;
+        }
         int shots = (c->tally_n[s] + farside_particles(c) - 1) / farside_particles(c);
         double margin = tol * p->margin * (1.0 + 0.25 * (shots - 1));
         /* After Agnes has said "not yet" here, it does not seal this setting again while the
          * reading is outside her band. */
         int doubted = c->doubt[s] && farside_second_reading(c) && fabs(r - target) > tol;
-        if (fabs(r - target) <= margin && !doubted)
+        if (fabs(r - target) <= margin && !doubted) {
             return OP_SEAL;
+        }
         int next = s + (r > target ? 1 : -1);
-        if (next < 0 || next >= F_STEPS)
+        if (next < 0 || next >= F_STEPS) {
             return OP_FIRE;
+        }
         double rn = op_read(c, next);
         if (c->ruled[next] || (rn >= 0.0 && (rn > target) != (r > target))) {
             /* Caught between two settings: read again the one read less (then the one that looks
              * closer). */
             if (!c->ruled[next] &&
                 (c->tally_n[next] < c->tally_n[s] ||
-                 (c->tally_n[next] == c->tally_n[s] && fabs(rn - target) < fabs(r - target))))
+                 (c->tally_n[next] == c->tally_n[s] && fabs(rn - target) < fabs(r - target)))) {
                 farside_dial(c, next);
+            }
             return OP_FIRE;
         }
         farside_dial(c, next);
-        if (rn < 0.0)
+        if (rn < 0.0) {
             return OP_FIRE;
+        }
     }
     return OP_FIRE;
 }

@@ -54,9 +54,9 @@ int sl_reset(int mode);
 void sl_controls(double lambda, double sep, double width);
 /* Spread of the random phase on slit B in mode 3: uniform on [-phi, phi], phi in [0, pi]. */
 void sl_scramble(double phi);
-void sl_seed(double seed); /* seed of the particle counter (an integer below 2^31) */
+void sl_seed(double next); /* seed of the particle counter (an integer below 2^31) */
 void sl_launch(void);
-void sl_step(int steps); /* at most 50 per call; stops at the end of the run */
+void sl_step(int count); /* at most 50 per call; stops at the end of the run */
 /* Recomputes the far-field screen from the current wave (the expensive part: call it every few
  * frames). */
 void sl_measure(void);

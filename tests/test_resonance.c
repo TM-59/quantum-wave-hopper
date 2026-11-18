@@ -21,15 +21,19 @@ static int failures;
 
 static void finish_run(void)
 {
-    for (int guard = 0; guard < 1000 && !rs_value(RS_DONE); guard++)
+    for (int guard = 0; guard < 1000 && !rs_value(RS_DONE); guard++) {
         rs_step(400);
+    }
 }
 
 static void test_resonances_found(void)
 {
     CHECK(rs_reset(0) == 0, "allocation failed");
     double e = 0.0, g = 0.0;
-    CHECK(double_barrier_resonance(1.0, 1.0, 4.0, 0.01, 1.0, &e, &g) == 0, "first resonance");
+    CHECK(double_barrier_resonance((DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                                   (Span){.from = 0.01, .to = 1.0},
+                                   (ResonanceOut){.energy = &e, .fwhm = &g}) == 0,
+          "first resonance");
     CHECK(rs_value(RS_E1) == e && rs_value(RS_G1) == g, "adapter E1 %.9f G1 %.9f", rs_value(RS_E1),
           rs_value(RS_G1));
     CHECK(rs_value(RS_E1) < rs_value(RS_E2) && rs_value(RS_E2) < rs_value(RS_HEIGHT),
@@ -68,8 +72,9 @@ static void test_packet_on_resonance(void)
               "regions");
     }
     double sum = 0.0;
-    for (int b = 0; b < RS_BIN_COUNT; b++)
+    for (int b = 0; b < RS_BIN_COUNT; b++) {
         sum += rs_density(b);
+    }
     CHECK(rs_value(RS_DONE) == 1.0, "run finished");
     CHECK(fabs(rs_value(RS_NORM) - 1.0) < 1e-10, "norm %.12f", rs_value(RS_NORM));
     CHECK(fabs(rs_value(RS_P_RIGHT) / rs_value(RS_T_PACKET) - 1.0) < 0.01,
@@ -122,33 +127,39 @@ static void test_well_release(void)
 static void test_curves(void)
 {
     int best = 0;
-    for (int i = 0; i < RS_CURVE_COUNT; i++)
-        if (rs_curve(i) > rs_curve(best))
+    for (int i = 0; i < RS_CURVE_COUNT; i++) {
+        if (rs_curve(i) > rs_curve(best)) {
             best = i;
+        }
+    }
     double e0 = rs_value(RS_CURVE_E0), e1 = rs_value(RS_CURVE_E1),
            eb = e0 + (e1 - e0) * best / (RS_CURVE_COUNT - 1);
     CHECK(fabs(eb - rs_value(RS_E1)) < 0.01 || fabs(eb - rs_value(RS_E2)) < 0.01,
           "curve peaks at a resonance: %.4f", eb);
     CHECK(rs_curve(-1) == 0.0 && rs_curve(RS_CURVE_COUNT) == 0.0, "out of range");
-    for (int i = 0; i < RS_CURVE_COUNT; i++)
+    for (int i = 0; i < RS_CURVE_COUNT; i++) {
         CHECK(rs_curve_packet(i) <= 1.0 && rs_curve_packet(i) >= 0.0, "packet curve in [0, 1]");
+    }
 }
 
 /* Native samples for the WASM comparison of scripts/smoke.cjs. */
 static void trace(void)
 {
     printf("mode,step");
-    for (int f = 0; f < RS_FIELDS; f++)
+    for (int f = 0; f < RS_FIELDS; f++) {
         printf(",f%d", f);
+    }
     printf(",d150,d200,d205,z30,z60,c20,c40,p20\n");
     for (int m = 0; m < 2; m++) {
         rs_reset(m);
-        if (m == 0)
+        if (m == 0) {
             rs_energy(0.30);
+        }
         for (int step = 0; step <= 2000; step += 100) {
             printf("%d,%d", m, step);
-            for (int f = 0; f < RS_FIELDS; f++)
+            for (int f = 0; f < RS_FIELDS; f++) {
                 printf(",%.17g", rs_value(f));
+            }
             printf(",%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n", rs_density(150),
                    rs_density(200), rs_density(205), rs_zoom(30), rs_zoom(60), rs_curve(20),
                    rs_curve(40), rs_curve_packet(20));

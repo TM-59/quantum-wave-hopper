@@ -19,13 +19,19 @@ typedef struct {
 static const char *const SCENE_ID[FS_COUNT] = {"dusk", "frost", "radio", "letter",
                                                "fall", "dark",  "dawn"};
 
-static inline void run_nights(uint64_t key, unsigned effects, int frost, int cells, RunResult *out)
+/* The two choices of a run: the frost scene and the fall scene. */
+typedef struct {
+    int frost, cells;
+} Choices;
+
+static inline void run_nights(uint64_t key, unsigned effects, Choices choices, RunResult *out)
 {
+    int frost = choices.frost, cells = choices.cells;
     Farside c;
     Operator p;
     memset(out, 0, sizeof *out);
     out->ending = -1;
-    farside_init(&c, effects, sub_seed(key, 0, 9));
+    farside_init(&c, (FarsideSetup){.effects = effects, .seed = sub_seed(key, 0, 9)});
     op_init(&p, key);
     int actions = 0;
     while (c.night < F_NIGHTS && actions < RUN_GUARD_ACTIONS) {
@@ -35,20 +41,22 @@ static inline void run_nights(uint64_t key, unsigned effects, int frost, int cel
             farside_answer(&c, option);
             if (farside_heavy(scene)) {
                 if (c.scene == FS_NONE) { /* the first action after the scene closes */
-                    if (op_decide(&p, &c) == OP_SEAL)
+                    if (op_decide(&p, &c) == OP_SEAL) {
                         farside_seal(&c);
-                    else
+                    } else {
                         farside_fire(&c);
+                    }
                     actions++;
                 }
                 out->quiet[scene] = calm && c.loud == loud && c.banner != FB_SEALED;
             }
             continue;
         }
-        if (op_decide(&p, &c) == OP_SEAL)
+        if (op_decide(&p, &c) == OP_SEAL) {
             farside_seal(&c);
-        else
+        } else {
             farside_fire(&c);
+        }
         actions++;
     }
     out->completed = c.night >= F_NIGHTS;
@@ -83,15 +91,13 @@ static inline uint64_t tension_key(int i, int run)
 enum { PLAY_SEEDS = 12, ABLATION_SEEDS = 40, TENSION_SEEDS = 16, TENSION_RUNS = 12 };
 /* Default choices for the ablation rows: keep the logbooks, keep the counter whole. */
 enum { DEFAULT_FROST = 1, DEFAULT_CELLS = 0 };
-static inline void play_choices(int i, int *frost, int *cells)
+static inline Choices play_choices(int i)
 {
-    *frost = i % 2;
-    *cells = (i / 2) % 2;
+    return (Choices){.frost = i % 2, .cells = (i / 2) % 2};
 }
-static inline void tension_choices(int run, int *frost, int *cells)
+static inline Choices tension_choices(int run)
 {
-    *frost = run % 2;
-    *cells = (run / 2) % 2;
+    return (Choices){.frost = run % 2, .cells = (run / 2) % 2};
 }
 
 #endif

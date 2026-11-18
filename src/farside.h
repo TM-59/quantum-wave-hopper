@@ -35,22 +35,25 @@ enum {
 };
 
 /* Numeric story effects, one bit each, so the bench can remove them one by one. */
-enum {
-    FE_DUSK = 1u << 0,  /* Agnes's copper counter (more particles per shot) and her second reading
-                           before every seal */
-    FE_STOVE = 1u << 1, /* the frost: a cold counter hears half the particles in nights 2-3; burning
-                           the logbooks warms it, an hour of stoking each */
-    FE_LOGBOOK = 1u
-        << 2, /* keeping the logbooks: last year's setting for nights 4 and 5 is written in them */
-    FE_RADIO = 1u << 3,  /* the institute's battery */
-    FE_LETTER = 1u << 4, /* the line company cuts the nightly charge from night 3 */
-    FE_FALL = 1u << 5,   /* Agnes is gone for night 5: no second reading */
-    FE_CELLS = 1u << 6,  /* the counter's cells into the battery for night 5 (more charge, half the
-                            particles) */
-    FE_DARK = 1u << 7, /* the line is cut for night 5: no charge, an empty battery waits for the sun
-                          on the panels */
-    FE_ALL = (1u << 8) - 1u
-};
+/* Macros, not an enum: C enumerators are int, and the masks are combined with unsigned bit ops. */
+/* Agnes's copper counter (more particles per shot) and her second reading before every seal */
+#define FE_DUSK (1U << 0U)
+/* the frost: a cold counter hears half the particles in nights 2-3; burning the logbooks warms it,
+ * an hour of stoking each */
+#define FE_STOVE (1U << 1U)
+/* keeping the logbooks: last year's setting for nights 4 and 5 is written in them */
+#define FE_LOGBOOK (1U << 2U)
+/* the institute's battery */
+#define FE_RADIO (1U << 3U)
+/* the line company cuts the nightly charge from night 3 */
+#define FE_LETTER (1U << 4U)
+/* Agnes is gone for night 5: no second reading */
+#define FE_FALL (1U << 5U)
+/* the counter's cells into the battery for night 5 (more charge, half the particles) */
+#define FE_CELLS (1U << 6U)
+/* the line is cut for night 5: no charge, an empty battery waits for the sun on the panels */
+#define FE_DARK (1U << 7U)
+#define FE_ALL ((1U << 8U) - 1U)
 
 enum { FB_NONE, FB_SEALED, FB_NOT_YET, FB_TOO_MANY, FB_TOO_FEW, FB_BLACKOUT, FB_SUN };
 
@@ -115,7 +118,12 @@ enum FarsideValue {
     FV_FIELDS
 };
 
-void farside_init(Farside *c, unsigned effects, uint64_t seed);
+/* The effects switched on (FE_* bits) and the story seed. */
+typedef struct {
+    unsigned effects;
+    uint64_t seed;
+} FarsideSetup;
+void farside_init(Farside *c, FarsideSetup setup);
 /* Turn the dial to a step (clamped). Does nothing while a scene is open or after the end. */
 void farside_dial(Farside *c, int step);
 /* Fire one shot at the current dial. Returns 0 when particles were sent, 1 when nothing happened, 2

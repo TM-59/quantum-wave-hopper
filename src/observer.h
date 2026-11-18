@@ -30,7 +30,7 @@ enum {
 int qw_reset(int mode);
 void qw_controls(double left, double height);
 void qw_launch(void);
-void qw_step(int steps);
+void qw_step(int count);
 double qw_value(int field);
 double qw_density(int bin);  /* mean |psi|^2 over the bin */
 double qw_real(int bin);     /* Re psi at the bin centre */

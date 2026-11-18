@@ -3,7 +3,10 @@
 
 static Farside story;
 
-void fw_reset(double seed) { farside_init(&story, FE_ALL, (uint64_t)seed); }
+void fw_reset(double seed)
+{
+    farside_init(&story, (FarsideSetup){.effects = FE_ALL, .seed = (uint64_t)seed});
+}
 void fw_dial(int step) { farside_dial(&story, step); }
 int fw_fire(void) { return farside_fire(&story); }
 int fw_seal(void) { return farside_seal(&story); }

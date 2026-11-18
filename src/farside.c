@@ -68,18 +68,21 @@ static int share_ready[F_STEPS];
 
 double farside_transmission(int step)
 {
-    if (step < 0)
+    if (step < 0) {
         step = 0;
-    if (step >= F_STEPS)
+    }
+    if (step >= F_STEPS) {
         step = F_STEPS - 1;
+    }
     if (!share_ready[step]) {
         /* The observer's own run: the same grid, packet and barrier (left edge 0, width 2) as the
          * observatory. */
         qw_reset(0);
         qw_controls(0.0, step * STEP_H);
         qw_launch();
-        while (!qw_value(QW_DONE))
+        while (!qw_value(QW_DONE)) {
             qw_step(400);
+        }
         share[step] = qw_value(QW_P_RIGHT);
         share_ready[step] = 1;
     }
@@ -89,18 +92,23 @@ double farside_transmission(int step)
 /* ------------------------------------------------------------------ the counter */
 static uint64_t mix64(uint64_t z)
 {
-    z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
-    z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
-    return z ^ (z >> 31);
+    z = (z ^ (z >> 30U)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27U)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31U);
 }
 
-static double to_unit(uint64_t z) { return (double)(mix64(z) >> 11) / 9007199254740992.0; }
+static double to_unit(uint64_t z) { return (double)(mix64(z) >> 11U) / 9007199254740992.0; }
 
 /* Draws are addressed, not streamed: the i-th particle sent at one dial step in one night always
  * gets the same draw, whatever happened before. Two runs that reach the same setting see the same
  * particles (common random numbers). */
-static double draw(const Farside *c, uint64_t kind, uint64_t a, uint64_t b)
+/* What a draw is for (kind) and its two indices. */
+typedef struct {
+    uint64_t kind, a, b;
+} DrawKey;
+static double draw(const Farside *c, DrawKey key)
 {
+    uint64_t kind = key.kind, a = key.a, b = key.b;
     uint64_t z = mix64(c->seed + kind * 0x632be59bd9b4e019ULL);
     z = mix64(z + (uint64_t)(c->night + 1) * 0x9e3779b97f4a7c15ULL);
     z = mix64(z + (a + 1u) * 0xd1b54a32d192ed03ULL);
@@ -110,12 +118,15 @@ static double draw(const Farside *c, uint64_t kind, uint64_t a, uint64_t b)
 double farside_settle(const Farside *c)
 {
     double f = 1.0;
-    if (c->night == 2 && on(c, FE_RADIO))
+    if (c->night == 2 && on(c, FE_RADIO)) {
         f *= RADIO_SETTLE;
-    if (c->night >= 2 && on(c, FE_LETTER))
+    }
+    if (c->night >= 2 && on(c, FE_LETTER)) {
         f *= LETTER_SETTLE;
-    if (c->night == 4 && on(c, FE_DARK))
+    }
+    if (c->night == 4 && on(c, FE_DARK)) {
         f *= DARK_SETTLE;
+    }
     return f;
 }
 
@@ -123,17 +134,20 @@ int farside_particles(const Farside *c)
 {
     int n = on(c, FE_DUSK) ? DUSK_PARTICLES : BASE_PARTICLES;
     /* The frost: a cold counter misses particles in nights 2-3 unless the stove warms it. */
-    if (c->frost == 1 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2))
+    if (c->frost == 1 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2)) {
         n /= STOVE_FACTOR;
-    if (c->cells == 1 && on(c, FE_CELLS) && c->night == 4)
+    }
+    if (c->cells == 1 && on(c, FE_CELLS) && c->night == 4) {
         n /= CELL_FACTOR;
+    }
     return n;
 }
 
 int farside_hint(const Farside *c)
 {
-    if (c->frost == 1 && on(c, FE_LOGBOOK) && c->night < F_NIGHTS)
+    if (c->frost == 1 && on(c, FE_LOGBOOK) && c->night < F_NIGHTS) {
         return LOGBOOK[c->night];
+    }
     return -1;
 }
 
@@ -145,8 +159,10 @@ static int count(Farside *c, int n)
 {
     double p = farside_transmission(c->dial);
     int k = 0;
-    for (int i = 0; i < n; i++)
-        k += draw(c, 1, (uint64_t)c->dial, (uint64_t)(c->tally_n[c->dial] + i)) < p;
+    for (int i = 0; i < n; i++) {
+        k += draw(c, (DrawKey){1, (uint64_t)c->dial, (uint64_t)c->tally_n[c->dial] + (uint64_t)i}) <
+             p;
+    }
     c->tally_n[c->dial] += n;
     c->tally_k[c->dial] += k;
     c->last_n = n;
@@ -158,18 +174,22 @@ static int count(Farside *c, int n)
 static void open_scene(Farside *c, int scene)
 {
     c->scene = scene;
-    if (c->order_len < FS_COUNT)
+    if (c->order_len < FS_COUNT) {
         c->order[c->order_len++] = scene;
-    if (farside_heavy(scene))
+    }
+    if (farside_heavy(scene)) {
         c->banner = FB_NONE;
+    }
 }
 
 double farside_charge(const Farside *c, int night)
 {
-    if (night == 4 && on(c, FE_DARK))
+    if (night == 4 && on(c, FE_DARK)) {
         return 0.0; /* the line is cut */
-    if (night >= 2 && on(c, FE_LETTER))
+    }
+    if (night >= 2 && on(c, FE_LETTER)) {
         return LETTER_CHARGE; /* the ration */
+    }
     return BASE_CHARGE;
 }
 
@@ -180,19 +200,25 @@ static void start_night(Farside *c)
     memset(c->ruled, 0, sizeof c->ruled);
     memset(c->doubt, 0, sizeof c->doubt);
     c->last_n = c->last_k = 0;
-    if (c->night == 4 && on(c, FE_DARK))
+    if (c->night == 4 && on(c, FE_DARK)) {
         c->power *= DARK_DRAIN;
+    }
     c->power = fmax(c->power, farside_charge(c, c->night));
-    if (c->night == 2 && on(c, FE_RADIO))
+    if (c->night == 2 && on(c, FE_RADIO)) {
         c->power += RADIO_BATTERY;
-    if (c->night == 4 && c->cells == 1 && on(c, FE_CELLS))
+    }
+    if (c->night == 4 && c->cells == 1 && on(c, FE_CELLS)) {
         c->power += CELL_POWER;
-    if (c->frost == 0 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2))
+    }
+    if (c->frost == 0 && on(c, FE_STOVE) && (c->night == 1 || c->night == 2)) {
         c->hours += STOVE_HOURS;
+    }
 }
 
-void farside_init(Farside *c, unsigned effects, uint64_t seed)
+void farside_init(Farside *c, FarsideSetup setup)
 {
+    unsigned effects = setup.effects;
+    uint64_t seed = setup.seed;
     memset(c, 0, sizeof *c);
     c->effects = effects;
     c->seed = seed;
@@ -219,8 +245,9 @@ static void clear_night(Farside *c)
     if (!farside_heavy(scene) && scene != FS_DAWN) {
         c->banner = FB_SEALED;
         c->loud++;
-    } else
+    } else {
         c->banner = FB_NONE;
+    }
     open_scene(c, scene);
 }
 
@@ -236,15 +263,17 @@ static int playing(const Farside *c) { return c->scene == FS_NONE && c->night < 
 
 void farside_dial(Farside *c, int step)
 {
-    if (!playing(c))
+    if (!playing(c)) {
         return;
+    }
     c->dial = step < 0 ? 0 : step >= F_STEPS ? F_STEPS - 1 : step;
 }
 
 int farside_fire(Farside *c)
 {
-    if (!playing(c))
+    if (!playing(c)) {
         return 1;
+    }
     c->banner = FB_NONE;
     if (c->power < 1.0 - 1e-9) {
         if (c->night == 4 && on(c, FE_DARK)) {
@@ -273,14 +302,15 @@ int farside_fire(Farside *c)
     int n = farside_particles(c);
     count(c, n);
     c->hours += SHOT_HOURS + PARTICLE_HOURS * n +
-                SETTLE_HOURS * farside_settle(c) * draw(c, 2, (uint64_t)c->shots, 0);
+                SETTLE_HOURS * farside_settle(c) * draw(c, (DrawKey){2, (uint64_t)c->shots, 0});
     return 0;
 }
 
 int farside_seal(Farside *c)
 {
-    if (!playing(c) || c->tally_n[c->dial] == 0)
+    if (!playing(c) || c->tally_n[c->dial] == 0) {
         return 1;
+    }
     int night = c->night, step = c->dial;
     double lo = TARGET[night] - TOL[night], hi = TARGET[night] + TOL[night];
     c->hours += SEAL_HOURS;
@@ -314,8 +344,9 @@ int farside_seal(Farside *c)
 int farside_answer(Farside *c, int option)
 {
     int scene = c->scene;
-    if (scene == FS_NONE || option < 0 || option >= farside_options(scene))
+    if (scene == FS_NONE || option < 0 || option >= farside_options(scene)) {
         return 1;
+    }
     c->scene = FS_NONE;
     switch (scene) {
     case FS_DUSK:
@@ -333,8 +364,9 @@ int farside_answer(Farside *c, int option)
         break;
     case FS_FALL:
         c->cells = option;
-        if (on(c, FE_FALL))
+        if (on(c, FE_FALL)) {
             c->agnes = 0;
+        }
         open_scene(c, FS_DARK);
         break;
     case FS_DARK:

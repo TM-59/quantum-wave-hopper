@@ -32,14 +32,16 @@ static void test_free_packet(void)
 {
     Wave2 w;
     double sx = 2.0, sy = 2.0, k = 2.0, dt = 0.01, t = 4.0;
-    if (wave2_init(&w, 200, 121, -20.0, -12.0, 0.2, dt)) {
+    if (wave2_init(&w,
+                   (Grid2){.nx = 200, .ny = 121, .x0 = -20.0, .y0 = -12.0, .dx = 0.2, .dt = dt})) {
         failures++;
         return;
     }
-    wave2_gaussian(&w, -8.0, 0.0, sx, sy, k, 0.0);
+    wave2_gaussian(&w, (Packet2){.cx = -8.0, .cy = 0.0, .sx = sx, .sy = sy, .kx = k, .ky = 0.0});
     double x0 = wave2_mean(&w, 0), e0 = wave2_energy(&w);
-    for (int s = 0; s < (int)lround(t / dt); s++)
+    for (int s = 0; s < (int)lround(t / dt); s++) {
         wave2_step(&w);
+    }
     double vg = sin(k * 0.2) / 0.2, width = sqrt(wave2_variance(&w, 1)),
            theory = sy * sqrt(1.0 + pow(t / (2.0 * sy * sy), 2.0));
     CHECK(fabs((wave2_mean(&w, 0) - x0) / (vg * t) - 1.0) < 2e-3,
@@ -59,12 +61,17 @@ static void test_free_packet(void)
 static void test_unitary(void)
 {
     Wave2 w;
-    if (wave2_init(&w, 128, 128, -12.8, -12.8, 0.2, 0.02)) {
+    if (wave2_init(
+            &w, (Grid2){.nx = 128, .ny = 128, .x0 = -12.8, .y0 = -12.8, .dx = 0.2, .dt = 0.02})) {
         failures++;
         return;
     }
-    wave2_gaussian(&w, -5.0, 0.0, 2.0, 3.0, 2.5, 0.0);
-    wave2_set_slits(&w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
+    wave2_gaussian(&w,
+                   (Packet2){.cx = -5.0, .cy = 0.0, .sx = 2.0, .sy = 3.0, .kx = 2.5, .ky = 0.0});
+    wave2_set_slits(&w, (Wall){.x = 0.0,
+                               .thickness = 0.8,
+                               .height = 60.0,
+                               .slits = {.sep = 4.4, .width = 1.4, .open = 3}});
     double worst = 0.0;
     for (int s = 0; s < 400; s++) {
         wave2_step(&w);
@@ -73,8 +80,9 @@ static void test_unitary(void)
     CHECK(worst < 1e-12, "unitary: largest |norm - 1| over 400 steps through the slits %.2e",
           worst);
     w.dt = 2.0;
-    for (int s = 0; s < 50; s++)
+    for (int s = 0; s < 50; s++) {
         wave2_step(&w);
+    }
     CHECK(fabs(wave2_norm(&w) - 1.0) < 1e-12, "unitary: norm after 50 steps of dt = 2 is %.15f",
           wave2_norm(&w));
     wave2_free(&w);
@@ -92,11 +100,15 @@ static double distance(const Wave2 *a, const Wave2 *b)
 
 static void evolve_to(Wave2 *w, double dt, double t)
 {
-    wave2_init(w, 96, 97, -9.6, -9.6, 0.2, dt);
-    wave2_gaussian(w, -3.0, 0.0, 1.5, 2.5, 2.5, 0.0);
-    wave2_set_slits(w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
-    for (int s = 0; s < (int)lround(t / dt); s++)
+    wave2_init(w, (Grid2){.nx = 96, .ny = 97, .x0 = -9.6, .y0 = -9.6, .dx = 0.2, .dt = dt});
+    wave2_gaussian(w, (Packet2){.cx = -3.0, .cy = 0.0, .sx = 1.5, .sy = 2.5, .kx = 2.5, .ky = 0.0});
+    wave2_set_slits(w, (Wall){.x = 0.0,
+                              .thickness = 0.8,
+                              .height = 60.0,
+                              .slits = {.sep = 4.4, .width = 1.4, .open = 3}});
+    for (int s = 0; s < (int)lround(t / dt); s++) {
         wave2_step(w);
+    }
 }
 
 /* Second order in time: halving dt divides the error by about 4 (the slit wall included). */
@@ -123,28 +135,36 @@ static void test_fraunhofer_formulas(void)
     double worst = 0.0;
     for (int m = 0; m <= 200; m++) {
         double ky = -3.0 + 0.03 * m;
-        for (int open = 1; open <= 3; open++)
-            worst = fmax(worst, fabs(slit_fraunhofer(ky, 8.8, 2.2, 0.0, open) -
-                                     slit_ideal(ky, 8.8, 2.2, open)));
+        for (int open = 1; open <= 3; open++) {
+            worst = fmax(
+                worst,
+                fabs(slit_fraunhofer(ky, (SlitPair){.sep = 8.8, .width = 2.2, .open = open}, 0.0) -
+                     slit_ideal(ky, (SlitPair){.sep = 8.8, .width = 2.2, .open = open})));
+        }
     }
     CHECK(
         worst < 1e-9,
         "Fraunhofer quadrature with uniform light equals the closed form: largest difference %.2e",
         worst);
-    CHECK(slit_ideal(2.0 * PI / 2.2, 8.8, 2.2, 1) < 1e-20, "single-slit zero at ky = 2 pi / a");
-    CHECK(slit_ideal(PI / 8.8, 8.8, 2.2, 3) < 1e-20, "double-slit dark fringe at ky = pi / d");
-    CHECK(fabs(slit_ideal(0.0, 8.8, 2.2, 3) / slit_ideal(0.0, 8.8, 2.2, 1) - 4.0) < 1e-12,
+    CHECK(slit_ideal(2.0 * PI / 2.2, (SlitPair){.sep = 8.8, .width = 2.2, .open = 1}) < 1e-20,
+          "single-slit zero at ky = 2 pi / a");
+    CHECK(slit_ideal(PI / 8.8, (SlitPair){.sep = 8.8, .width = 2.2, .open = 3}) < 1e-20,
+          "double-slit dark fringe at ky = pi / d");
+    CHECK(fabs(slit_ideal(0.0, (SlitPair){.sep = 8.8, .width = 2.2, .open = 3}) /
+                   slit_ideal(0.0, (SlitPair){.sep = 8.8, .width = 2.2, .open = 1}) -
+               4.0) < 1e-12,
           "two slits in step are 4 times one slit at ky = 0");
-    CHECK(fabs(slit_fraunhofer(0.7, 8.8, 2.2, 6.0, 1) - slit_fraunhofer(-0.7, 8.8, 2.2, 6.0, 1)) <
-              1e-12,
+    CHECK(fabs(slit_fraunhofer(0.7, (SlitPair){.sep = 8.8, .width = 2.2, .open = 1}, 6.0) -
+               slit_fraunhofer(-0.7, (SlitPair){.sep = 8.8, .width = 2.2, .open = 1}, 6.0)) < 1e-12,
           "a real aperture diffracts symmetrically");
 }
 
 static double l1_screen(double (*f)(int), double (*g)(int))
 {
     double s = 0.0, h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS;
-    for (int m = 0; m < SL_BINS; m++)
+    for (int m = 0; m < SL_BINS; m++) {
         s += fabs(f(m) - g(m)) * h;
+    }
     return s;
 }
 
@@ -153,12 +173,14 @@ static int peaks(double (*f)(int), double *where, int most)
 {
     double h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS, top = 0.0;
     int n = 0;
-    for (int m = 0; m < SL_BINS; m++)
+    for (int m = 0; m < SL_BINS; m++) {
         top = fmax(top, f(m));
+    }
     for (int m = 1; m < SL_BINS - 1 && n < most; m++) {
         double a = f(m - 1), b = f(m), c = f(m + 1);
-        if (!(b >= a && b > c && b > 0.02 * top))
+        if (!(b >= a && b > c && b > 0.02 * top)) {
             continue;
+        }
         double den = a - 2.0 * b + c;
         where[n++] =
             -sl_value(SL_SCREEN_HALF) + (m + 0.5 + (den != 0.0 ? 0.5 * (a - c) / den : 0.0)) * h;
@@ -168,8 +190,9 @@ static int peaks(double (*f)(int), double *where, int most)
 
 static void finish(void)
 {
-    for (int guard = 0; guard < 1000 && !sl_value(SL_DONE); guard++)
+    for (int guard = 0; guard < 1000 && !sl_value(SL_DONE); guard++) {
         sl_step(50);
+    }
 }
 
 static double both_screen[SL_BINS];
@@ -189,8 +212,9 @@ static void test_double_slit(void)
     CHECK(ns == nt && ns >= 5, "double slit: %d bright fringes on the screen, Fraunhofer has %d",
           ns, nt);
     double worst = 0.0;
-    for (int i = 0; i < ns && i < nt; i++)
+    for (int i = 0; i < ns && i < nt; i++) {
         worst = fmax(worst, fabs(sim[i] - th[i]));
+    }
     CHECK(worst < 0.6, "double slit: fringes within %.3f of the Fraunhofer maxima (bin 1.0)",
           worst);
     double spacing = sl_value(SL_SPACING_MEASURED), exact = sl_value(SL_SPACING);
@@ -200,8 +224,9 @@ static void test_double_slit(void)
           spacing, exact, sl_value(SL_LAMBDA) * sl_value(SL_SCREEN_L) / sl_value(SL_SEP));
     CHECK(fabs(sl_value(SL_NORM) - 1.0) < 2e-3, "double slit: the absorbers took %.2e of the norm",
           1.0 - sl_value(SL_NORM));
-    for (int m = 0; m < SL_BINS; m++)
+    for (int m = 0; m < SL_BINS; m++) {
         both_screen[m] = sl_screen(m);
+    }
 }
 
 static void test_single_slit(void)
@@ -262,14 +287,16 @@ static void test_particles(void)
     for (int n = 0; n < COUNT; n++) {
         double y = sl_particle(n);
         int c = (int)floor((y + half) / (2.0 * half) * COARSE);
-        if (c >= 0 && c < COARSE)
+        if (c >= 0 && c < COARSE) {
             counts[c]++;
+        }
     }
     double worst = 0.0;
     for (int c = 0; c < COARSE; c++) {
         double p = 0.0;
-        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++)
+        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++) {
             p += sl_screen(m) * h;
+        }
         double sd = sqrt(COUNT * p * (1.0 - p)) + 1e-9;
         worst = fmax(worst, fabs(counts[c] - COUNT * p) / sd);
     }
@@ -307,8 +334,9 @@ static void test_controls(void)
 static void trace(void)
 {
     printf("mode,step");
-    for (int f = 0; f < SL_FIELDS; f++)
+    for (int f = 0; f < SL_FIELDS; f++) {
         printf(",f%d", f);
+    }
     printf(",image,s50,s100,s150,t100,i100,p0,p1\n");
     for (int mode = 0; mode < 4; mode++) {
         sl_reset(mode);
@@ -317,16 +345,19 @@ static void trace(void)
             sl_measure();
             unsigned char *img = sl_image();
             long sum = 0;
-            for (int k = 0; k < 256 * 256 * 4; k++)
+            for (int k = 0; k < 256 * 256 * 4; k++) {
                 sum += img[k];
+            }
             printf("%d,%d", mode, (int)sl_value(SL_STEPS));
-            for (int f = 0; f < SL_FIELDS; f++)
+            for (int f = 0; f < SL_FIELDS; f++) {
                 printf(",%.17g", sl_value(f));
+            }
             printf(",%ld,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g,%.17g\n", sum, sl_screen(50),
                    sl_screen(100), sl_screen(150), sl_screen_theory(100), sl_screen_ideal(100),
                    sl_particle(0), sl_particle(1));
-            if (sl_value(SL_DONE))
+            if (sl_value(SL_DONE)) {
                 break;
+            }
             sl_step(50);
         }
     }

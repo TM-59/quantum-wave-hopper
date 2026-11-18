@@ -25,15 +25,15 @@ static float xs[MAXN], ya[MAXN], yb[MAXN], yc[MAXN];
 static const char *path(const char *name)
 {
     static char buf[640];
-    snprintf(buf, sizeof buf, "%s/%s", dir, name);
+    (void)snprintf(buf, sizeof buf, "%s/%s", dir, name);
     return buf;
 }
 
 static void plot(const char *name, const char *title, const char *xl, const char *yl, int count,
                  const Series *s, int ns)
 {
-    if (svg_plot(path(name), title, xl, yl, xs, count, s, ns) != 0) {
-        fprintf(stderr, "cannot write %s\n", name);
+    if (svg_plot(path(name), &(Chart){title, xl, yl}, xs, count, s, ns) != 0) {
+        (void)fprintf(stderr, "cannot write %s\n", name);
         exit(1);
     }
 }
@@ -43,13 +43,13 @@ static void plot(const char *name, const char *title, const char *xl, const char
 static void value(const char *id, const char *what, double measured, double theory)
 {
     double err = theory != 0.0 ? fabs(measured / theory - 1.0) : fabs(measured - theory);
-    fprintf(values, "| `%s` | %s | %.8g | %.8g | %.2e |\n", id, what, measured, theory, err);
+    (void)fprintf(values, "| `%s` | %s | %.8g | %.8g | %.2e |\n", id, what, measured, theory, err);
 }
 
 static void must(int failed)
 {
     if (failed) {
-        fprintf(stderr, "out of memory\n");
+        (void)fprintf(stderr, "out of memory\n");
         exit(1);
     }
 }
@@ -58,8 +58,8 @@ static void must(int failed)
 static void fig_conservation(void)
 {
     Wave w;
-    must(wave_init(&w, 3900, -195.0, 0.1, 0.05));
-    wave_gaussian(&w, -100.0, 10.0, 1.0);
+    must(wave_init(&w, (Grid){.n = 3900, .x0 = -195.0, .dx = 0.1, .dt = 0.05}));
+    wave_gaussian(&w, (Packet){.center = -100.0, .sigma = 10.0, .k0 = 1.0});
     wave_set_barrier(&w, 0.0, 2.0, 0.6);
     double e0 = wave_energy(&w), worst_n = 0.0, worst_e = 0.0;
     int n = 0;
@@ -73,8 +73,9 @@ static void fig_conservation(void)
             yb[n] = (float)(de * 1e12);
             n++;
         }
-        if (k < 3300)
+        if (k < 3300) {
             wave_step(&w);
+        }
     }
     value("norm-drift",
           "largest departure of the total probability from 1 over the 3300 steps of the standard "
@@ -99,8 +100,8 @@ static void fig_packet(void)
 {
     Wave w;
     double sigma = 2.0, k0 = 1.5;
-    must(wave_init(&w, 4000, -100.0, 0.05, 0.01));
-    wave_gaussian(&w, -40.0, sigma, k0);
+    must(wave_init(&w, (Grid){.n = 4000, .x0 = -100.0, .dx = 0.05, .dt = 0.01}));
+    wave_gaussian(&w, (Packet){.center = -40.0, .sigma = sigma, .k0 = k0});
     int n = 0;
     double mean_end = 0.0, width_end = 0.0;
     for (int k = 0; k <= 3000; k++) {
@@ -116,8 +117,9 @@ static void fig_packet(void)
             mean_end = wave_mean_x(&w);
             width_end = sqrt(wave_variance_x(&w));
         }
-        if (k < 3000)
+        if (k < 3000) {
             wave_step(&w);
+        }
     }
     value("packet-centre",
           "centre of a free packet (k0 = 1.5, sigma = 2) after t = 30, started at -40 (theory -40 "
@@ -126,8 +128,8 @@ static void fig_packet(void)
     value("packet-width", "its width after t = 30 (theory sigma sqrt(1 + (t / 2 sigma^2)^2))",
           width_end, sigma * sqrt(1.0 + 900.0 / 64.0));
     Wave g;
-    must(wave_init(&g, 4000, -100.0, 0.05, 0.01));
-    wave_gaussian(&g, 0.0, 2.0, 1.5);
+    must(wave_init(&g, (Grid){.n = 4000, .x0 = -100.0, .dx = 0.05, .dt = 0.01}));
+    wave_gaussian(&g, (Packet){.center = 0.0, .sigma = 2.0, .k0 = 1.5});
     value("packet-width-0", "width of the packet as launched (theory sigma = 2)",
           sqrt(wave_variance_x(&g)), 2.0);
     value("packet-norm-0", "wave_norm right after wave_gaussian (theory 1)", wave_norm(&g), 1.0);
@@ -142,16 +144,23 @@ static void fig_packet(void)
 }
 
 /* Speed of a free packet's centre on the game's grid. */
-static double centre_speed(double k0, double dx, double dt)
+/* Grid spacing and time step of a run. */
+typedef struct {
+    double dx, dt;
+} Mesh;
+
+static double centre_speed(double k0, Mesh mesh)
 {
+    double dx = mesh.dx, dt = mesh.dt;
     Wave w;
     int n = (int)(400.0 / dx);
-    must(wave_init(&w, n, -200.0, dx, dt));
-    wave_gaussian(&w, -100.0, 10.0, k0);
+    must(wave_init(&w, (Grid){.n = n, .x0 = -200.0, .dx = dx, .dt = dt}));
+    wave_gaussian(&w, (Packet){.center = -100.0, .sigma = 10.0, .k0 = k0});
     int steps = (int)(60.0 / k0 / dt);
     double x0 = wave_mean_x(&w);
-    for (int k = 0; k < steps; k++)
+    for (int k = 0; k < steps; k++) {
         wave_step(&w);
+    }
     double v = (wave_mean_x(&w) - x0) / (steps * dt);
     wave_free(&w);
     return v;
@@ -162,25 +171,28 @@ static void fig_dispersion(void)
 {
     double dx = 0.1, dt = 0.05;
     int n = 0;
-    for (double k = 0.25; k <= 4.0001; k += 0.25, n++) {
+    double k = 0.25; /* the value walked: a float counter, kept as a while loop */
+    while (k <= 4.0001) {
         double e = (1.0 - cos(k * dx)) / (dx * dx), q = 0.5 * e * dt;
         xs[n] = (float)k;
-        ya[n] = (float)(centre_speed(k, dx, dt) / k);
+        ya[n] = (float)(centre_speed(k, (Mesh){.dx = dx, .dt = dt}) / k);
         yb[n] = (float)(sin(k * dx) / dx / (1.0 + q * q) / k);
         yc[n] = 1.0f;
+        k += 0.25;
+        n++;
     }
     double e1 = (1.0 - cos(dx)) / (dx * dx), q1 = 0.5 * e1 * dt;
     value("group-speed-k1",
           "speed of the packet centre at k0 = 1 on the game's grid (dx 0.1, dt 0.05) (theory of "
           "the scheme: sin(k dx) / dx / (1 + (E dt / 2)^2))",
-          centre_speed(1.0, dx, dt), sin(dx) / dx / (1.0 + q1 * q1));
+          centre_speed(1.0, (Mesh){.dx = dx, .dt = dt}), sin(dx) / dx / (1.0 + q1 * q1));
     value("group-speed-k1-ideal", "the same against the continuum value k0 = 1",
-          centre_speed(1.0, dx, dt), 1.0);
+          centre_speed(1.0, (Mesh){.dx = dx, .dt = dt}), 1.0);
     double e3 = (1.0 - cos(3.0 * dx)) / (dx * dx), q3 = 0.5 * e3 * dt;
-    value("group-speed-k3", "speed at k0 = 3 (theory of the scheme)", centre_speed(3.0, dx, dt),
-          sin(3.0 * dx) / dx / (1.0 + q3 * q3));
+    value("group-speed-k3", "speed at k0 = 3 (theory of the scheme)",
+          centre_speed(3.0, (Mesh){.dx = dx, .dt = dt}), sin(3.0 * dx) / dx / (1.0 + q3 * q3));
     value("group-speed-k3-ideal", "the same against the continuum value 3",
-          centre_speed(3.0, dx, dt), 3.0);
+          centre_speed(3.0, (Mesh){.dx = dx, .dt = dt}), 3.0);
     Series s[] = {{"measured / k", ya, "#1f77b4"},
                   {"scheme / k", yb, "#d62728"},
                   {"continuum", yc, "#888888"}};
@@ -192,8 +204,8 @@ static void fig_dispersion(void)
 static void fig_current(void)
 {
     Wave w;
-    must(wave_init(&w, 3900, -195.0, 0.1, 0.05));
-    wave_gaussian(&w, -100.0, 10.0, 1.0);
+    must(wave_init(&w, (Grid){.n = 3900, .x0 = -195.0, .dx = 0.1, .dt = 0.05}));
+    wave_gaussian(&w, (Packet){.center = -100.0, .sigma = 10.0, .k0 = 1.0});
     wave_set_barrier(&w, 0.0, 2.0, 0.6);
     int site = (int)((2.0 - w.x0) / w.dx + 0.5),
         n = 0; /* first site with x >= 2: the right edge of the barrier */
@@ -203,11 +215,13 @@ static void fig_current(void)
     for (int k = 0; k < 3300; k++) {
         memcpy(old, w.psi, sizeof *old * (size_t)w.n);
         double before = 0.0, after = 0.0;
-        for (int j = site; j < w.n; j++)
+        for (int j = site; j < w.n; j++) {
             before += creal(old[j] * conj(old[j])) * w.dx;
+        }
         wave_step(&w);
-        for (int j = site; j < w.n; j++)
+        for (int j = site; j < w.n; j++) {
             after += creal(w.psi[j] * conj(w.psi[j])) * w.dx;
+        }
         double complex a = 0.5 * (old[site - 1] + w.psi[site - 1]),
                        b = 0.5 * (old[site] + w.psi[site]);
         double current =
@@ -244,34 +258,39 @@ static void fig_barrier(void)
 {
     int n = 0;
     double height = 0.6, width = 2.0;
-    for (double e = 0.01; e <= 3.0001; e += 0.01, n++) {
+    double e = 0.01; /* the value walked: a float counter, kept as a while loop */
+    while (e <= 3.0001) {
         double k = sqrt(2.0 * e);
         xs[n] = (float)(e / height);
-        ya[n] = (float)barrier_transmission(k, height, width);
+        ya[n] = (float)barrier_transmission(k, (Barrier){.height = height, .width = width});
         yb[n] = (float)(e > height ? 1.0 : 0.0); /* a classical particle */
+        e += 0.01;
+        n++;
     }
     value("barrier-none", "barrier_transmission with no barrier (theory 1)",
-          barrier_transmission(2.0, 0.0, 3.0), 1.0);
+          barrier_transmission(2.0, (Barrier){.height = 0.0, .width = 3.0}), 1.0);
     value("barrier-game",
           "plane wave k = 1 at the standard barrier V = 0.6, width 2: E / V = 0.83 (theory: the "
           "tunnelling formula)",
-          barrier_transmission(1.0, 0.6, 2.0),
+          barrier_transmission(1.0, (Barrier){.height = 0.6, .width = 2.0}),
           1.0 / (1.0 + 0.36 * pow(sinh(sqrt(0.2) * 2.0), 2) / (4.0 * 0.5 * 0.1)));
     value("barrier-at-top", "exactly at E = V = 0.6 (theory 1 / (1 + V w^2 / 2))",
-          barrier_transmission(sqrt(1.2), 0.6, 2.0), 1.0 / (1.0 + 0.5 * 0.6 * 4.0));
+          barrier_transmission(sqrt(1.2), (Barrier){.height = 0.6, .width = 2.0}),
+          1.0 / (1.0 + 0.5 * 0.6 * 4.0));
     double q = PI / width, eres = height + 0.5 * q * q;
     value("barrier-resonance", "at the first resonance above the barrier, q w = pi (theory 1)",
-          barrier_transmission(sqrt(2.0 * eres), height, width), 1.0);
-    value("barrier-continuity",
-          "jump of the formula across E = V, between E = V (1 - 1e-9) and E = V (1 + 1e-9) (theory "
-          "0)",
-          barrier_transmission(sqrt(1.2 * (1.0 + 1e-9)), 0.6, 2.0) -
-              barrier_transmission(sqrt(1.2 * (1.0 - 1e-9)), 0.6, 2.0),
-          0.0);
+          barrier_transmission(sqrt(2.0 * eres), (Barrier){.height = height, .width = width}), 1.0);
+    value(
+        "barrier-continuity",
+        "jump of the formula across E = V, between E = V (1 - 1e-9) and E = V (1 + 1e-9) (theory "
+        "0)",
+        barrier_transmission(sqrt(1.2 * (1.0 + 1e-9)), (Barrier){.height = 0.6, .width = 2.0}) -
+            barrier_transmission(sqrt(1.2 * (1.0 - 1e-9)), (Barrier){.height = 0.6, .width = 2.0}),
+        0.0);
     value("barrier-thick",
           "a tall, thick barrier: k = 0.5, V = 5, width 4 (theory about 16 E (V - E) / V^2 exp(-2 "
           "kappa w))",
-          barrier_transmission(0.5, 5.0, 4.0),
+          barrier_transmission(0.5, (Barrier){.height = 5.0, .width = 4.0}),
           16.0 * 0.125 * 4.875 / 25.0 * exp(-2.0 * sqrt(9.75) * 4.0));
     Series s[] = {{"quantum T", ya, "#1f77b4"}, {"classical", yb, "#888888"}};
     plot("barrier.svg", "Transmission of a plane wave (barrier V = 0.6, width 2)", "E / V", "T", n,
@@ -283,29 +302,42 @@ static void fig_experiment(void)
 {
     int n = 0;
     double worst = 0.0;
-    for (double h = 0.0; h <= 1.5001; h += 0.1, n++) {
-        double sim = simulate_transmission(1.0, 10.0, h, 2.0),
-               th = packet_transmission(1.0, 10.0, h, 2.0);
+    double h = 0.0; /* the value walked: a float counter, kept as a while loop */
+    while (h <= 1.5001) {
+        double sim = simulate_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                                           (Barrier){.height = h, .width = 2.0}),
+               th = packet_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                                        (Barrier){.height = h, .width = 2.0});
         xs[n] = (float)h;
         ya[n] = (float)sim;
         yb[n] = (float)th;
-        yc[n] = (float)barrier_transmission(1.0, h, 2.0);
-        if (th > 0.01)
+        yc[n] = (float)barrier_transmission(1.0, (Barrier){.height = h, .width = 2.0});
+        if (th > 0.01) {
             worst = fmax(worst, fabs(sim / th - 1.0));
+        }
+        h += 0.1;
+        n++;
     }
     value("tunnel-sim",
           "transmitted probability of the simulated packet at V = 0.6 (theory: the packet-averaged "
           "formula)",
-          simulate_transmission(1.0, 10.0, 0.6, 2.0), packet_transmission(1.0, 10.0, 0.6, 2.0));
+          simulate_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                                (Barrier){.height = 0.6, .width = 2.0}),
+          packet_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                              (Barrier){.height = 0.6, .width = 2.0}));
     value("tunnel-plane",
           "the packet-averaged formula at V = 0.6 against the single plane wave k = 1",
-          packet_transmission(1.0, 10.0, 0.6, 2.0), barrier_transmission(1.0, 0.6, 2.0));
+          packet_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                              (Barrier){.height = 0.6, .width = 2.0}),
+          barrier_transmission(1.0, (Barrier){.height = 0.6, .width = 2.0}));
     value("tunnel-worst",
           "largest relative gap between simulation and packet formula over 16 heights, where T is "
           "above 0.01",
           worst, 0.0);
     value("tunnel-free", "simulated transmission with no barrier (theory 1)",
-          simulate_transmission(1.0, 10.0, 0.0, 2.0), 1.0);
+          simulate_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                                (Barrier){.height = 0.0, .width = 2.0}),
+          1.0);
     Series s[] = {{"simulated packet", ya, "#1f77b4"},
                   {"packet formula", yb, "#d62728"},
                   {"plane wave k = 1", yc, "#888888"}};
@@ -317,10 +349,10 @@ static void fig_experiment(void)
 static void fig_unitarity(void)
 {
     Wave w, e;
-    must(wave_init(&w, 800, -40.0, 0.1, 0.05));
-    must(wave_init(&e, 800, -40.0, 0.1, 0.05));
-    wave_gaussian(&w, 0.0, 3.0, 1.0);
-    wave_gaussian(&e, 0.0, 3.0, 1.0);
+    must(wave_init(&w, (Grid){.n = 800, .x0 = -40.0, .dx = 0.1, .dt = 0.05}));
+    must(wave_init(&e, (Grid){.n = 800, .x0 = -40.0, .dx = 0.1, .dt = 0.05}));
+    wave_gaussian(&w, (Packet){.center = 0.0, .sigma = 3.0, .k0 = 1.0});
+    wave_gaussian(&e, (Packet){.center = 0.0, .sigma = 3.0, .k0 = 1.0});
     double complex *tmp = malloc(sizeof *tmp * 800);
     must(!tmp);
     int n = 0;
@@ -344,10 +376,11 @@ static void fig_unitarity(void)
           log10(wave_norm(&e)), 0.0);
     /* A step 200 times longer is still norm-preserving. */
     Wave big;
-    must(wave_init(&big, 800, -40.0, 0.1, 10.0));
-    wave_gaussian(&big, 0.0, 3.0, 1.0);
-    for (int k = 0; k < 50; k++)
+    must(wave_init(&big, (Grid){.n = 800, .x0 = -40.0, .dx = 0.1, .dt = 10.0}));
+    wave_gaussian(&big, (Packet){.center = 0.0, .sigma = 3.0, .k0 = 1.0});
+    for (int k = 0; k < 50; k++) {
         wave_step(&big);
+    }
     value("cn-norm-big-step",
           "norm after 50 Crank-Nicolson steps of dt = 10, 200 times the game's (theory 1: unitary "
           "for any step)",
@@ -365,8 +398,8 @@ static void fig_unitarity(void)
 static void val_thomas(void)
 {
     Wave w;
-    must(wave_init(&w, 3900, -195.0, 0.1, 0.05));
-    wave_gaussian(&w, -3.0, 10.0, 1.0);
+    must(wave_init(&w, (Grid){.n = 3900, .x0 = -195.0, .dx = 0.1, .dt = 0.05}));
+    wave_gaussian(&w, (Packet){.center = -3.0, .sigma = 10.0, .k0 = 1.0});
     wave_set_barrier(&w, 0.0, 2.0, 0.6);
     int n = w.n;
     double complex *old = malloc(sizeof *old * (size_t)n);
@@ -389,8 +422,9 @@ static void val_thomas(void)
     w.dt = -w.dt;
     wave_step(&w);
     double back = 0.0;
-    for (int j = 0; j < n; j++)
+    for (int j = 0; j < n; j++) {
         back = fmax(back, cabs(w.psi[j] - old[j]));
+    }
     value("step-reverse",
           "largest difference from the start after one step forward and one with dt reversed "
           "(theory 0)",
@@ -403,8 +437,9 @@ static void val_thomas(void)
 static double l2(const Wave *a, const Wave *b)
 {
     double s = 0.0;
-    for (int j = 0; j < a->n; j++)
+    for (int j = 0; j < a->n; j++) {
         s += pow(cabs(a->psi[j] - b->psi[j]), 2);
+    }
     return sqrt(s * a->dx);
 }
 
@@ -413,19 +448,21 @@ static void fig_order(void)
 {
     double dts[6] = {0.4, 0.2, 0.1, 0.05, 0.025, 0.0125}, errs[6];
     Wave ref;
-    must(wave_init(&ref, 2000, -100.0, 0.1, 0.0015625));
-    wave_gaussian(&ref, -30.0, 4.0, 1.0);
+    must(wave_init(&ref, (Grid){.n = 2000, .x0 = -100.0, .dx = 0.1, .dt = 0.0015625}));
+    wave_gaussian(&ref, (Packet){.center = -30.0, .sigma = 4.0, .k0 = 1.0});
     wave_set_barrier(&ref, 0.0, 2.0, 0.6);
-    for (int k = 0; k < 25600; k++)
+    for (int k = 0; k < 25600; k++) {
         wave_step(&ref); /* t = 40 */
+    }
     for (int i = 0; i < 6; i++) {
         Wave w;
-        must(wave_init(&w, 2000, -100.0, 0.1, dts[i]));
-        wave_gaussian(&w, -30.0, 4.0, 1.0);
+        must(wave_init(&w, (Grid){.n = 2000, .x0 = -100.0, .dx = 0.1, .dt = dts[i]}));
+        wave_gaussian(&w, (Packet){.center = -30.0, .sigma = 4.0, .k0 = 1.0});
         wave_set_barrier(&w, 0.0, 2.0, 0.6);
         int steps = (int)(40.0 / dts[i] + 0.5);
-        for (int k = 0; k < steps; k++)
+        for (int k = 0; k < steps; k++) {
             wave_step(&w);
+        }
         errs[i] = l2(&w, &ref);
         xs[i] = (float)log10(dts[i]);
         ya[i] = (float)log10(errs[i]);
@@ -450,23 +487,25 @@ static void fig_order(void)
 static void fig_stationary(void)
 {
     Wave w;
-    must(wave_init(&w, 800, -20.0, 0.05, 0.01));
+    must(wave_init(&w, (Grid){.n = 800, .x0 = -20.0, .dx = 0.05, .dt = 0.01}));
     for (int j = 0; j < w.n; j++) {
         double x = wave_x(&w, j);
         w.v[j] = 0.5 * x * x;
         w.psi[j] = exp(-x * x / 2.0);
     }
     double norm = sqrt(wave_norm(&w));
-    for (int j = 0; j < w.n; j++)
+    for (int j = 0; j < w.n; j++) {
         w.psi[j] /= norm;
+    }
     double p0 = creal(w.psi[400] * conj(w.psi[400])), a0 = creal(w.psi[400]), worst = 0.0;
     int n = 0, zero_step = -1;
     double prev = a0;
     for (int k = 0; k <= 2600; k++) {
         double re = creal(w.psi[400]), p = creal(w.psi[400] * conj(w.psi[400]));
         worst = fmax(worst, fabs(p / p0 - 1.0));
-        if (zero_step < 0 && prev > 0.0 && re <= 0.0)
+        if (zero_step < 0 && prev > 0.0 && re <= 0.0) {
             zero_step = k;
+        }
         prev = re;
         if (k % 10 == 0) {
             xs[n] = (float)(k * 0.01);
@@ -475,8 +514,9 @@ static void fig_stationary(void)
             yc[n] = (float)(p / p0);
             n++;
         }
-        if (k < 2600)
+        if (k < 2600) {
             wave_step(&w);
+        }
     }
     value("ground-energy", "mean energy of the harmonic ground state on the grid (theory 1/2)",
           wave_energy(&w), 0.5);
@@ -498,8 +538,8 @@ static void fig_stationary(void)
 static void fig_walls(void)
 {
     Wave w;
-    must(wave_init(&w, 1000, -50.0, 0.1, 0.05));
-    wave_gaussian(&w, 20.0, 4.0, 1.0);
+    must(wave_init(&w, (Grid){.n = 1000, .x0 = -50.0, .dx = 0.1, .dt = 0.05}));
+    wave_gaussian(&w, (Packet){.center = 20.0, .sigma = 4.0, .k0 = 1.0});
     int n = 0;
     double min_norm = 2.0, turn = -1e9, edge = 0.0;
     for (int k = 0; k <= 1200; k++) {
@@ -513,8 +553,9 @@ static void fig_walls(void)
         min_norm = fmin(min_norm, wave_norm(&w));
         turn = fmax(turn, m);
         edge = fmax(edge, cabs(w.psi[w.n - 1]));
-        if (k < 1200)
+        if (k < 1200) {
             wave_step(&w);
+        }
     }
     value("wall-norm",
           "smallest total probability while a packet reflects off the end of the grid (theory 1: "
@@ -548,12 +589,15 @@ static void fig_adapter(void)
         n++;
         qw_step(15);
     }
-    for (int b = 0; b < QW_BIN_COUNT; b++)
-        if (b < 20 || b >= QW_BIN_COUNT - 20)
+    for (int b = 0; b < QW_BIN_COUNT; b++) {
+        if (b < 20 || b >= QW_BIN_COUNT - 20) {
             edge += qw_density(b) * 1.0;
+        }
+    }
     double area = 0.0;
-    for (int b = 0; b < QW_BIN_COUNT; b++)
+    for (int b = 0; b < QW_BIN_COUNT; b++) {
         area += qw_density(b) * 1.0; /* each bin is 10 sites x 0.1 */
+    }
     value("demo-steps", "time at the end of the standard demonstration (theory 3300 x 0.05)",
           qw_value(QW_TIME), 165.0);
     value("demo-right",
@@ -582,18 +626,25 @@ static void fig_adapter(void)
     /* The half-through demonstration and the bisection behind it. */
     double half = qw_half_height();
     n = 0;
-    for (double h = 0.0; h <= 1.5001; h += 0.01, n++) {
+    double h = 0.0; /* the value walked: a float counter, kept as a while loop */
+    while (h <= 1.5001) {
         xs[n] = (float)h;
-        ya[n] = (float)packet_transmission(1.0, 10.0, h, 2.0);
+        ya[n] = (float)packet_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                                           (Barrier){.height = h, .width = 2.0});
         yb[n] = 0.5f;
+        h += 0.01;
+        n++;
     }
     value("half-height",
           "barrier height found by qw_half_height (the packet formula there should be 0.5)",
-          packet_transmission(1.0, 10.0, half, 2.0), 0.5);
+          packet_transmission((Launch){.k0 = 1.0, .sigma = 10.0},
+                              (Barrier){.height = half, .width = 2.0}),
+          0.5);
     value("half-height-value", "that height, in units where the packet's energy is 0.5", half, 0.0);
     qw_reset(2);
-    while (!qw_value(QW_DONE))
+    while (!qw_value(QW_DONE)) {
         qw_step(400);
+    }
     value(
         "half-right",
         "probability beyond the barrier at the end of the half-through demonstration (theory 0.5)",
@@ -635,23 +686,33 @@ static void fig_layers(void)
 {
     int n = 0;
     double worst = 0.0, worst_sum = 0.0, worst_gap0 = 0.0;
-    for (double e = 0.01; e <= 3.0001; e += 0.01, n++) {
+    double e = 0.01; /* the value walked: a float counter, kept as a while loop */
+    while (e <= 3.0001) {
         double k = sqrt(2.0 * e), edges[2] = {0.0, 2.0}, heights[1] = {0.6}, r;
-        double t = layers_transmission(k, 1, edges, heights, &r);
+        double t =
+            layers_transmission(k, (Layers){.count = 1, .edges = edges, .heights = heights}, &r);
         xs[n] = (float)(e / 0.6);
         ya[n] = (float)t;
-        yb[n] = (float)barrier_transmission(k, 0.6, 2.0);
+        yb[n] = (float)barrier_transmission(k, (Barrier){.height = 0.6, .width = 2.0});
         yc[n] = (float)(t + r);
-        worst = fmax(worst, fabs(t - barrier_transmission(k, 0.6, 2.0)));
+        worst =
+            fmax(worst, fabs(t - barrier_transmission(k, (Barrier){.height = 0.6, .width = 2.0})));
         worst_sum = fmax(worst_sum, fabs(t + r - 1.0));
-        worst_gap0 = fmax(worst_gap0, fabs(double_barrier_transmission(k, 1.0, 1.0, 0.0) -
-                                           barrier_transmission(k, 1.0, 2.0)));
+        worst_gap0 =
+            fmax(worst_gap0, fabs(double_barrier_transmission(
+                                      k, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 0.0}) -
+                                  barrier_transmission(k, (Barrier){.height = 1.0, .width = 2.0})));
+        e += 0.01;
+        n++;
     }
     double e5[6] = {-1.0, 0.0, 1.0, 5.0, 6.0, 7.5}, h5[5] = {0.3, 1.0, 0.0, 1.0, 0.2}, r5,
            sum5 = 0.0;
-    for (double e = 0.01; e <= 2.0; e += 0.01) {
-        double t5 = layers_transmission(sqrt(2.0 * e), 5, e5, h5, &r5);
+    e = 0.01; /* the value walked again */
+    while (e <= 2.0) {
+        double t5 = layers_transmission(sqrt(2.0 * e),
+                                        (Layers){.count = 5, .edges = e5, .heights = h5}, &r5);
         sum5 = fmax(sum5, fabs(t5 + r5 - 1.0));
+        e += 0.01;
     }
     value("layers-single",
           "largest difference between one transfer-matrix layer and the closed-form barrier "
@@ -675,16 +736,18 @@ static void fig_layers(void)
 
 /* Closed-form amplitudes of one barrier on [0, b], and the Fabry-Perot sum for two of them a gap
  * apart. */
-static double fabry_perot(double k, double height, double b, double gap, double *phase)
+static double fabry_perot(double k, DoubleBarrier pair, double *phase)
 {
+    double height = pair.height, b = pair.width, gap = pair.gap;
     double complex kappa = csqrt(2.0 * (height - 0.5 * k * k) + 0.0 * I);
     double complex den =
         ccosh(kappa * b) + I * (kappa * kappa - k * k) / (2.0 * k * kappa) * csinh(kappa * b);
     double complex t0 = cexp(-I * k * b) / den,
                    r0 = -I * (k * k + kappa * kappa) / (2.0 * k * kappa) * csinh(kappa * b) / den;
     double complex loop = r0 * r0 * cexp(2.0 * I * k * gap), d = 1.0 - loop;
-    if (phase)
+    if (phase) {
         *phase = remainder(carg(loop), 2.0 * PI);
+    }
     double tt = creal(t0 * conj(t0));
     return tt * tt / creal(d * conj(d));
 }
@@ -694,22 +757,37 @@ static double res_e[2], res_g[2];
 /* S21: the pair's transmission, its resonances, and the Fabry-Perot closed form. */
 static void fig_double(void)
 {
-    double_barrier_resonance(1.0, 1.0, 4.0, 0.01, 1.0, &res_e[0], &res_g[0]);
-    double_barrier_resonance(1.0, 1.0, 4.0, res_e[0] + 3.0 * res_g[0], 1.0, &res_e[1], &res_g[1]);
+    double_barrier_resonance((DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                             (Span){.from = 0.01, .to = 1.0},
+                             (ResonanceOut){.energy = &res_e[0], .fwhm = &res_g[0]});
+    double_barrier_resonance((DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                             (Span){.from = res_e[0] + 3.0 * res_g[0], .to = 1.0},
+                             (ResonanceOut){.energy = &res_e[1], .fwhm = &res_g[1]});
     int n = 0;
     double worst = 0.0;
-    for (double e = 0.004; e <= 1.2001; e += 0.002, n++) {
-        double k = sqrt(2.0 * e), t = double_barrier_transmission(k, 1.0, 1.0, 4.0);
+    double e = 0.004; /* the value walked: a float counter, kept as a while loop */
+    while (e <= 1.2001) {
+        double k = sqrt(2.0 * e), t = double_barrier_transmission(
+                                      k, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0});
         xs[n] = (float)e;
         ya[n] = (float)log10(t);
-        yb[n] = (float)log10(barrier_transmission(k, 1.0, 1.0));
-        yc[n] = (float)log10(fabry_perot(k, 1.0, 1.0, 4.0, NULL));
-        if (fabs(e - 1.0) > 1e-6)
-            worst = fmax(worst, fabs(t - fabry_perot(k, 1.0, 1.0, 4.0, NULL)));
+        yb[n] = (float)log10(barrier_transmission(k, (Barrier){.height = 1.0, .width = 1.0}));
+        yc[n] = (float)log10(
+            fabry_perot(k, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}, NULL));
+        if (fabs(e - 1.0) > 1e-6) {
+            worst = fmax(
+                worst,
+                fabs(t - fabry_perot(k, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                                     NULL)));
+        }
+        e += 0.002;
+        n++;
     }
     double ph1, ph2, box1 = 0.5 * pow(PI / 4.0, 2), box2 = 0.5 * pow(2.0 * PI / 4.0, 2);
-    fabry_perot(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0, &ph1);
-    fabry_perot(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0, &ph2);
+    fabry_perot(sqrt(2.0 * res_e[0]), (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                &ph1);
+    fabry_perot(sqrt(2.0 * res_e[1]), (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                &ph2);
     value("fp-diff",
           "largest difference between the transfer matrices and the Fabry-Perot closed form for "
           "two barriers (V = 1, width 1, gap 4), 599 energies (theory 0)",
@@ -720,9 +798,13 @@ static void fig_double(void)
           res_e[0], box1);
     value("res-e2", "second resonance energy (box level 2 pi^2 / L^2 = 1.2337)", res_e[1], box2);
     value("res-t1", "T at the first resonance (theory 1: a symmetric pair transmits fully)",
-          double_barrier_transmission(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0), 1.0);
+          double_barrier_transmission(sqrt(2.0 * res_e[0]),
+                                      (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          1.0);
     value("res-t2", "T at the second resonance (theory 1)",
-          double_barrier_transmission(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0), 1.0);
+          double_barrier_transmission(sqrt(2.0 * res_e[1]),
+                                      (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          1.0);
     value(
         "res-phase1",
         "round-trip phase 2 arg r0 + 2 k L at the first resonance, reduced to (-pi, pi] (theory 0)",
@@ -731,10 +813,16 @@ static void fig_double(void)
     double mid = 0.30, km = sqrt(2.0 * mid);
     value("res-dark",
           "T of the pair at E = 0.30, between the resonances, against one barrier alone",
-          double_barrier_transmission(km, 1.0, 1.0, 4.0), barrier_transmission(km, 1.0, 1.0));
+          double_barrier_transmission(km, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          barrier_transmission(km, (Barrier){.height = 1.0, .width = 1.0}));
     double edges[4] = {0.0, 1.0, 5.0, 6.5}, heights[3] = {1.0, 0.0, 1.0}, best = 0.0;
-    for (double e = 0.10; e < 0.25; e += 1e-5)
-        best = fmax(best, layers_transmission(sqrt(2.0 * e), 3, edges, heights, NULL));
+    e = 0.10; /* the value walked again */
+    while (e < 0.25) {
+        best = fmax(best, layers_transmission(
+                              sqrt(2.0 * e),
+                              (Layers){.count = 3, .edges = edges, .heights = heights}, NULL));
+        e += 1e-5;
+    }
     value(
         "res-asym",
         "highest T of an uneven pair (widths 1 and 1.5) near the first resonance (theory: below 1)",
@@ -750,18 +838,28 @@ static void fig_double(void)
 static double bw_gap(double width, float *out, int *count)
 {
     double e1, g1, worst = 0.0;
-    double_barrier_resonance(1.0, width, 4.0, 0.01, 1.0, &e1, &g1);
+    double_barrier_resonance((DoubleBarrier){.height = 1.0, .width = width, .gap = 4.0},
+                             (Span){.from = 0.01, .to = 1.0},
+                             (ResonanceOut){.energy = &e1, .fwhm = &g1});
     int n = 0;
-    for (double x = -3.0; x <= 3.0001; x += 0.02, n++) {
-        double t = double_barrier_transmission(sqrt(2.0 * (e1 + x * g1)), 1.0, width, 4.0),
+    double x = -3.0; /* the value walked: a float counter, kept as a while loop */
+    while (x <= 3.0001) {
+        double t = double_barrier_transmission(
+                   sqrt(2.0 * (e1 + x * g1)),
+                   (DoubleBarrier){.height = 1.0, .width = width, .gap = 4.0}),
                bw = 1.0 / (1.0 + 4.0 * x * x);
-        if (out)
+        if (out) {
             out[n] = (float)t;
-        if (fabs(x) <= 1.0001)
+        }
+        if (fabs(x) <= 1.0001) {
             worst = fmax(worst, fabs(t - bw));
+        }
+        x += 0.02;
+        n++;
     }
-    if (count)
+    if (count) {
         *count = n;
+    }
     return worst;
 }
 
@@ -775,7 +873,9 @@ static void fig_breit_wigner(void)
         yc[i] = (float)(1.0 / (1.0 + 4.0 * x * x));
     }
     double e15, g15;
-    double_barrier_resonance(1.0, 1.5, 4.0, 0.01, 1.0, &e15, &g15);
+    double_barrier_resonance((DoubleBarrier){.height = 1.0, .width = 1.5, .gap = 4.0},
+                             (Span){.from = 0.01, .to = 1.0},
+                             (ResonanceOut){.energy = &e15, .fwhm = &g15});
     value("bw-gap-1",
           "largest |T - Lorentzian| within one width of the first resonance, barriers 1 wide "
           "(Gamma / E1 = 0.11)",
@@ -798,33 +898,39 @@ static void fig_decay(void)
 {
     Wave w;
     double reach = 30.0 + 2.5 * 200.0, a = 1.0, b = 5.0;
-    must(wave_init(&w, (int)(2.0 * reach / 0.05), -reach, 0.05, 0.05));
-    wave_set_double_barrier(&w, 0.0, 1.0, 4.0, 1.0);
+    must(wave_init(&w,
+                   (Grid){.n = (int)(2.0 * reach / 0.05), .x0 = -reach, .dx = 0.05, .dt = 0.05}));
+    wave_set_double_barrier(&w, 0.0, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0});
     for (int j = 0; j < w.n; j++) {
         double x = wave_x(&w, j);
         w.psi[j] = x > a && x < b ? sin(PI * (x - a) / 4.0) : 0.0;
     }
     double norm = sqrt(wave_norm(&w));
-    for (int j = 0; j < w.n; j++)
+    for (int j = 0; j < w.n; j++) {
         w.psi[j] /= norm;
+    }
     int n = 0;
     double at30 = 0.0;
     for (int k = 0; k <= 4000; k++) {
         double t = k * 0.05, p = wave_prob_between(&w, a, b);
-        if (k == 600)
+        if (k == 600) {
             at30 = p;
+        }
         if (k % 40 == 0) {
             xs[n] = (float)t;
             ya[n] = (float)log(p);
             n++;
         }
-        if (k < 4000)
+        if (k < 4000) {
             wave_step(&w);
+        }
     }
-    for (int i = 0; i < n; i++)
+    for (int i = 0; i < n; i++) {
         yb[i] = (float)(log(at30) - res_g[0] * (xs[i] - 30.0));
+    }
     wave_free(&w);
-    double rate = simulate_well_decay(1.0, 1.0, 4.0, 30.0, 180.0);
+    double rate = simulate_well_decay((DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0},
+                                      (Span){.from = 30.0, .to = 180.0});
     value("decay-rate",
           "decay rate of the probability between the barriers, fitted on t in [30, 180], grid dx "
           "0.05 (theory: the width Gamma of the first resonance)",
@@ -834,7 +940,8 @@ static void fig_decay(void)
           "probability still between the barriers at t = 30 (the part of the box state that is not "
           "the resonance leaves first)",
           at30, 0.0);
-    double k1 = sqrt(2.0 * res_e[0]), t1 = barrier_transmission(k1, 1.0, 1.0);
+    double k1 = sqrt(2.0 * res_e[0]),
+           t1 = barrier_transmission(k1, (Barrier){.height = 1.0, .width = 1.0});
     value("gamma-semiclassical",
           "the classical estimate hbar v T1 / (2 L): speed sqrt(2 E1) over the round trip 2 L = 8, "
           "times one barrier's T at E1 (theory: Gamma, to order of magnitude)",
@@ -849,15 +956,25 @@ static void fig_packet_resonance(void)
 {
     int n = 0;
     double worst = 0.0;
-    for (double e = 0.06; e <= 0.78001; e += 0.04, n++) {
-        double k = sqrt(2.0 * e), sim = simulate_double_transmission(k, 10.0, 1.0, 1.0, 4.0),
-               th = double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0);
+    double e = 0.06; /* the value walked: a float counter, kept as a while loop */
+    while (e <= 0.78001) {
+        double k = sqrt(2.0 * e),
+               sim = simulate_double_transmission(
+                   (Launch){.k0 = k, .sigma = 10.0},
+                   (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+               th = double_packet_transmission(
+                   (Launch){.k0 = k, .sigma = 10.0},
+                   (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0});
         xs[n] = (float)e;
         ya[n] = (float)sim;
         yb[n] = (float)th;
-        yc[n] = (float)double_barrier_transmission(k, 1.0, 1.0, 4.0);
-        if (th > 0.01)
+        yc[n] = (float)double_barrier_transmission(
+            k, (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0});
+        if (th > 0.01) {
             worst = fmax(worst, fabs(sim / th - 1.0));
+        }
+        e += 0.04;
+        n++;
     }
     double k1 = sqrt(2.0 * res_e[0]);
     value("dpacket-worst",
@@ -865,12 +982,18 @@ static void fig_packet_resonance(void)
           "transfer matrices over 19 energies where T > 0.01",
           worst, 0.0);
     value("dpacket-e1", "simulated packet sigma 10 sent at E1 (theory: the packet average, not 1)",
-          simulate_double_transmission(k1, 10.0, 1.0, 1.0, 4.0),
-          double_packet_transmission(k1, 10.0, 1.0, 1.0, 4.0));
+          simulate_double_transmission((Launch){.k0 = k1, .sigma = 10.0},
+                                       (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          double_packet_transmission((Launch){.k0 = k1, .sigma = 10.0},
+                                     (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}));
     value("dpacket-e1-20", "the packet average at E1 for sigma 20 (the browser's packet)",
-          double_packet_transmission(k1, 20.0, 1.0, 1.0, 4.0), 0.0);
+          double_packet_transmission((Launch){.k0 = k1, .sigma = 20.0},
+                                     (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          0.0);
     value("dpacket-e1-40", "the packet average at E1 for sigma 40",
-          double_packet_transmission(k1, 40.0, 1.0, 1.0, 4.0), 0.0);
+          double_packet_transmission((Launch){.k0 = k1, .sigma = 40.0},
+                                     (DoubleBarrier){.height = 1.0, .width = 1.0, .gap = 4.0}),
+          0.0);
     value("dpacket-spread",
           "energy spread k0 / (2 sigma) of the sigma 10 packet at E1, against the width Gamma",
           k1 / 20.0, res_g[0]);
@@ -922,8 +1045,9 @@ static void fig_rs_adapter(void)
     plot("rs-demo.svg", "The browser's packet at the first resonance: where the probability is",
          "t", "probability", n, s, 3);
     rs_energy(0.40);
-    while (!rs_value(RS_DONE))
+    while (!rs_value(RS_DONE)) {
         rs_step(400);
+    }
     value("rs-off",
           "the same experiment at E = 0.40, between the resonances (theory: the packet average)",
           rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
@@ -959,9 +1083,14 @@ static void fig_rs_adapter(void)
 static void fig_norm2d(void)
 {
     Wave2 w;
-    must(wave2_init(&w, 128, 129, -12.8, -12.8, 0.2, 0.02));
-    wave2_gaussian(&w, -5.0, 0.0, 2.0, 3.0, 2.5, 0.0);
-    wave2_set_slits(&w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
+    must(wave2_init(
+        &w, (Grid2){.nx = 128, .ny = 129, .x0 = -12.8, .y0 = -12.8, .dx = 0.2, .dt = 0.02}));
+    wave2_gaussian(&w,
+                   (Packet2){.cx = -5.0, .cy = 0.0, .sx = 2.0, .sy = 3.0, .kx = 2.5, .ky = 0.0});
+    wave2_set_slits(&w, (Wall){.x = 0.0,
+                               .thickness = 0.8,
+                               .height = 60.0,
+                               .slits = {.sep = 4.4, .width = 1.4, .open = 3}});
     double worst = 0.0;
     int n = 0;
     for (int k = 0; k <= 400; k++) {
@@ -972,15 +1101,17 @@ static void fig_norm2d(void)
             ya[n] = (float)(d * 1e13);
             n++;
         }
-        if (k < 400)
+        if (k < 400) {
             wave2_step(&w);
+        }
     }
     value("w2-norm",
           "largest |norm - 1| over 400 steps of the 2D scheme through the slit wall (theory 0)",
           worst, 0.0);
     w.dt = 2.0;
-    for (int k = 0; k < 50; k++)
+    for (int k = 0; k < 50; k++) {
         wave2_step(&w);
+    }
     value("w2-norm-big",
           "norm after 50 more steps of dt = 2, 100 times the browser's (theory 1: unitary for any "
           "step)",
@@ -995,18 +1126,23 @@ static void fig_norm2d(void)
 static double dist2(const Wave2 *a, const Wave2 *b)
 {
     double s = 0.0;
-    for (int k = 0; k < a->nx * a->ny; k++)
+    for (int k = 0; k < a->nx * a->ny; k++) {
         s += pow(cabs(a->psi[k] - b->psi[k]), 2);
+    }
     return sqrt(s) * a->dx;
 }
 
 static void order_run(Wave2 *w, double dt)
 {
-    must(wave2_init(w, 96, 97, -9.6, -9.6, 0.2, dt));
-    wave2_gaussian(w, -3.0, 0.0, 1.5, 2.5, 2.5, 0.0);
-    wave2_set_slits(w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
-    for (int k = 0; k < (int)lround(1.6 / dt); k++)
+    must(wave2_init(w, (Grid2){.nx = 96, .ny = 97, .x0 = -9.6, .y0 = -9.6, .dx = 0.2, .dt = dt}));
+    wave2_gaussian(w, (Packet2){.cx = -3.0, .cy = 0.0, .sx = 1.5, .sy = 2.5, .kx = 2.5, .ky = 0.0});
+    wave2_set_slits(w, (Wall){.x = 0.0,
+                              .thickness = 0.8,
+                              .height = 60.0,
+                              .slits = {.sep = 4.4, .width = 1.4, .open = 3}});
+    for (int k = 0; k < (int)lround(1.6 / dt); k++) {
         wave2_step(w);
+    }
 }
 
 /* S27: second order in dt once V dt is small. */
@@ -1046,8 +1182,9 @@ static void fig_spread2d(void)
 {
     Wave2 w;
     double sy = 2.0, k = 2.0, dt = 0.01;
-    must(wave2_init(&w, 200, 121, -20.0, -12.0, 0.2, dt));
-    wave2_gaussian(&w, -8.0, 0.0, 2.0, sy, k, 0.0);
+    must(wave2_init(&w,
+                    (Grid2){.nx = 200, .ny = 121, .x0 = -20.0, .y0 = -12.0, .dx = 0.2, .dt = dt}));
+    wave2_gaussian(&w, (Packet2){.cx = -8.0, .cy = 0.0, .sx = 2.0, .sy = sy, .kx = k, .ky = 0.0});
     double x0 = wave2_mean(&w, 0), e0 = wave2_energy(&w), worst = 0.0;
     int n = 0;
     for (int s = 0; s <= 400; s++) {
@@ -1060,8 +1197,9 @@ static void fig_spread2d(void)
             yb[n] = (float)th;
             n++;
         }
-        if (s < 400)
+        if (s < 400) {
             wave2_step(&w);
+        }
     }
     double vg = sin(k * 0.2) / 0.2;
     value("w2-width",
@@ -1088,8 +1226,9 @@ static double screen_y(int m)
 }
 static void sl_finish(void)
 {
-    while (!sl_value(SL_DONE))
+    while (!sl_value(SL_DONE)) {
         sl_step(50);
+    }
 }
 static double saved_screen[SL_BINS];
 
@@ -1143,16 +1282,23 @@ static void fig_far(void)
 /* S30: one slit, the missing order and the field in the hole. Direct runs on the browser's geometry
  * (src/slits.c: 256 x 256, dx 0.2, dt 0.02, wall 0.8 thick of V = 60, packet sigma 3 x 6 from x =
  * -12). */
-static void slit_run(Wave2 *w, double lambda, double sep, double width, int open, double thickness)
+static void slit_run(Wave2 *w, double lambda, SlitPair pair, double thickness)
 {
+    double sep = pair.sep, width = pair.width;
+    int open = pair.open;
     double k = 2.0 * PI / lambda;
-    must(wave2_init(w, 256, 256, -25.6, -25.6, 0.2, 0.02));
+    must(wave2_init(
+        w, (Grid2){.nx = 256, .ny = 256, .x0 = -25.6, .y0 = -25.6, .dx = 0.2, .dt = 0.02}));
     must(wave2_absorber(w, 4.0, 3.0));
-    wave2_gaussian(w, -12.0, 0.0, 3.0, 6.0, k, 0.0);
-    wave2_set_slits(w, 0.0, thickness, 60.0, sep, width, open);
+    wave2_gaussian(w, (Packet2){.cx = -12.0, .cy = 0.0, .sx = 3.0, .sy = 6.0, .kx = k, .ky = 0.0});
+    wave2_set_slits(w, (Wall){.x = 0.0,
+                              .thickness = thickness,
+                              .height = 60.0,
+                              .slits = {.sep = sep, .width = width, .open = open}});
     int steps = (int)ceil(21.0 / (sin(k * 0.2) / 0.2) / 0.02);
-    for (int s = 0; s < steps; s++)
+    for (int s = 0; s < steps; s++) {
         wave2_step(w);
+    }
 }
 
 static void fig_one_slit(void)
@@ -1160,19 +1306,20 @@ static void fig_one_slit(void)
     enum { M = 241 };
     double lambda = 2.0, sep = 6.0, width = 3.0, k = 2.0 * PI / lambda, ky[M], one[M], two[M],
            th1[M], th2[M];
-    for (int m = 0; m < M; m++)
+    for (int m = 0; m < M; m++) {
         ky[m] = -k + 2.0 * k * m / (M - 1);
+    }
     Wave2 w;
-    slit_run(&w, lambda, sep, width, 3, 0.8);
-    wave2_ky_spectrum(&w, 1.8, M, ky, two);
+    slit_run(&w, lambda, (SlitPair){.sep = sep, .width = width, .open = 3}, 0.8);
+    wave2_ky_spectrum(&w, 1.8, (KyTable){.count = M, .ky = ky, .out = two});
     wave2_free(&w);
-    slit_run(&w, lambda, sep, width, 1, 0.8);
-    wave2_ky_spectrum(&w, 1.8, M, ky, one);
+    slit_run(&w, lambda, (SlitPair){.sep = sep, .width = width, .open = 1}, 0.8);
+    wave2_ky_spectrum(&w, 1.8, (KyTable){.count = M, .ky = ky, .out = one});
     wave2_free(&w);
     double s1 = 0.0, s2 = 0.0, t1 = 0.0, t2 = 0.0, mean = 0.0;
     for (int m = 0; m < M; m++) {
-        th1[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 1);
-        th2[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 3);
+        th1[m] = slit_fraunhofer(ky[m], (SlitPair){.sep = sep, .width = width, .open = 1}, 6.0);
+        th2[m] = slit_fraunhofer(ky[m], (SlitPair){.sep = sep, .width = width, .open = 3}, 6.0);
         s1 += one[m];
         s2 += two[m];
         t1 += th1[m];
@@ -1198,19 +1345,19 @@ static void fig_one_slit(void)
     value("envelope-zero", "one slit a = 3: intensity at ky = 2 pi / a over its maximum (theory 0)",
           one[order2] / one[centre], 0.0);
     double kq[2] = {0.0, 2.0 * (2.0 * PI / sep)}, thin[2];
-    slit_run(&w, lambda, sep, width, 3, 0.2);
-    wave2_ky_spectrum(&w, 1.2, 2, kq, thin);
+    slit_run(&w, lambda, (SlitPair){.sep = sep, .width = width, .open = 3}, 0.2);
+    wave2_ky_spectrum(&w, 1.2, (KyTable){.count = 2, .ky = kq, .out = thin});
     wave2_free(&w);
     value("missing-order-thin",
           "the same second order behind a wall 0.2 thick, one grid cell (theory 0)",
           thin[1] / thin[0], 0.0);
-    slit_run(&w, lambda, sep, width, 0, 0.2);
+    slit_run(&w, lambda, (SlitPair){.sep = sep, .width = width, .open = 0}, 0.2);
     value("thin-leak",
           "probability that tunnels through that 0.2 wall with both slits closed (theory: small "
           "but not 0)",
           wave2_prob_beyond(&w, 1.2), 0.0);
     wave2_free(&w);
-    slit_run(&w, lambda, sep, width, 0, 0.8);
+    slit_run(&w, lambda, (SlitPair){.sep = sep, .width = width, .open = 0}, 0.8);
     value("thick-leak", "the same through the browser's 0.8 wall (theory: about exp(-2 kappa 0.8))",
           wave2_prob_beyond(&w, 1.8), 0.0);
     wave2_free(&w);
@@ -1239,8 +1386,9 @@ static void fig_born(void)
     sl_seed(1);
     for (int c = 0; c < COARSE; c++) {
         double p = 0.0;
-        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++)
+        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++) {
             p += sl_screen(m) * 2.0 * half / SL_BINS;
+        }
         exact[c] = (float)(p / width);
         xs[c] = (float)(-half + (c + 0.5) * width);
     }
@@ -1248,8 +1396,9 @@ static void fig_born(void)
         double hist[COARSE] = {0};
         for (int n = 0; n < counts[r]; n++) {
             int c = (int)floor((sl_particle(n) + half) / width);
-            if (c >= 0 && c < COARSE)
+            if (c >= 0 && c < COARSE) {
                 hist[c]++;
+            }
         }
         for (int c = 0; c < COARSE; c++) {
             out[r][c] = (float)(hist[c] / counts[r] / width);
@@ -1273,11 +1422,13 @@ static void fig_born(void)
           "particle 7 drawn again with seed 1 minus the first draw (theory 0: a pure function of "
           "seed and number)",
           sl_particle(7) - first, 0.0);
-    for (int c = 0; c < COARSE; c++)
+    for (int c = 0; c < COARSE; c++) {
         ya[c] = out[0][c], yb[c] = out[1][c], yc[c] = out[2][c];
+    }
     static float ex[COARSE];
-    for (int c = 0; c < COARSE; c++)
+    for (int c = 0; c < COARSE; c++) {
         ex[c] = exact[c];
+    }
     Series s[] = {{"200 particles", ya, "#bbbbbb"},
                   {"2,000 particles", yb, "#2ca02c"},
                   {"20,000 particles", yc, "#1f77b4"},
@@ -1296,8 +1447,9 @@ static void fig_coherence(void)
     double h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS, worst = 0.0;
     sl_scramble(0.0);
     double sup = 0.0;
-    for (int m = 0; m < SL_BINS; m++)
+    for (int m = 0; m < SL_BINS; m++) {
         sup += fabs(sl_screen(m) - saved_screen[m]) * h;
+    }
     value("superposition",
           "L1 distance between the sum of the two one-slit waves and the two-slit run (theory 0 if "
           "the wall only cuts the light)",
@@ -1339,22 +1491,26 @@ static void fig_coherence(void)
 static void fig_absorber(void)
 {
     Wave2 a, b;
-    must(wave2_init(&a, 128, 128, -12.8, -12.8, 0.2, 0.02));
-    must(wave2_init(&b, 128, 128, -12.8, -12.8, 0.2, 0.02));
+    must(wave2_init(
+        &a, (Grid2){.nx = 128, .ny = 128, .x0 = -12.8, .y0 = -12.8, .dx = 0.2, .dt = 0.02}));
+    must(wave2_init(
+        &b, (Grid2){.nx = 128, .ny = 128, .x0 = -12.8, .y0 = -12.8, .dx = 0.2, .dt = 0.02}));
     must(wave2_absorber(&b, 4.0, 3.0));
-    wave2_gaussian(&a, 0.0, 0.0, 1.5, 1.5, 2.0, 1.0);
-    wave2_gaussian(&b, 0.0, 0.0, 1.5, 1.5, 2.0, 1.0);
+    wave2_gaussian(&a, (Packet2){.cx = 0.0, .cy = 0.0, .sx = 1.5, .sy = 1.5, .kx = 2.0, .ky = 1.0});
+    wave2_gaussian(&b, (Packet2){.cx = 0.0, .cy = 0.0, .sx = 1.5, .sy = 1.5, .kx = 2.0, .ky = 1.0});
     int n = 0;
     double pa = 0.0, pb = 0.0;
     for (int s = 0; s <= 1000; s++) {
         if (s % 10 == 0) {
             pa = pb = 0.0;
-            for (int j = 0; j < 128; j++)
-                for (int i = 0; i < 128; i++)
+            for (int j = 0; j < 128; j++) {
+                for (int i = 0; i < 128; i++) {
                     if (fabs(wave2_x(&a, i)) < 6.0 && fabs(wave2_y(&a, j)) < 6.0) {
                         pa += creal(a.psi[j * 128 + i] * conj(a.psi[j * 128 + i]));
                         pb += creal(b.psi[j * 128 + i] * conj(b.psi[j * 128 + i]));
                     }
+                }
+            }
             pa *= 0.04;
             pb *= 0.04;
             xs[n] = (float)(s * 0.02);
@@ -1394,8 +1550,9 @@ static void fig_sl_adapter(void)
         ya[n] = (float)sl_value(SL_P_BEYOND);
         yb[n] = (float)(1.0 - sl_value(SL_NORM));
         n++;
-        if (sl_value(SL_DONE))
+        if (sl_value(SL_DONE)) {
             break;
+        }
         sl_step(5);
     }
     (void)worst;
@@ -1418,18 +1575,19 @@ static void fig_sl_adapter(void)
 
 int main(int argc, char **argv)
 {
-    snprintf(dir, sizeof dir, "%s", argc > 1 ? argv[1] : "docs/theory/figures");
+    (void)snprintf(dir, sizeof dir, "%s", argc > 1 ? argv[1] : "docs/theory/figures");
     values = fopen(path("values.md"), "w");
     if (!values) {
-        fprintf(stderr, "cannot write %s/values.md\n", dir);
+        (void)fprintf(stderr, "cannot write %s/values.md\n", dir);
         return 1;
     }
-    fprintf(values,
-            "# Measured values\n\nWritten by `make theory-figs` (tests/theory_figs.c) from the "
-            "program's own functions. Do not edit by hand.\n"
-            "Units: hbar = m = 1. The last column is the relative error; where the theory column "
-            "is 0 it is the absolute value.\n\n"
-            "| id | what is measured | measured | theory | error |\n|---|---|---|---|---|\n");
+    (void)fprintf(
+        values,
+        "# Measured values\n\nWritten by `make theory-figs` (tests/theory_figs.c) from the "
+        "program's own functions. Do not edit by hand.\n"
+        "Units: hbar = m = 1. The last column is the relative error; where the theory column "
+        "is 0 it is the absolute value.\n\n"
+        "| id | what is measured | measured | theory | error |\n|---|---|---|---|---|\n");
     fig_conservation();
     fig_packet();
     fig_dispersion();
@@ -1457,6 +1615,9 @@ int main(int argc, char **argv)
     fig_one_slit();
     fig_absorber();
     fig_sl_adapter();
-    fclose(values);
+    int bad = ferror(values) != 0;
+    if (fclose(values) != 0 || bad) {
+        return 1;
+    }
     return 0;
 }

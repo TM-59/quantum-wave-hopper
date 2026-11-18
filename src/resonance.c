@@ -4,16 +4,17 @@
 #include <complex.h>
 #include <math.h>
 
-#define X0 -400.0
+#define X0 (-400.0)
 #define X1 700.0
 #define DX 0.1
 #define DT 0.05
-#define HEIGHT 1.0
-#define WIDTH 1.0
+/* Barrier height and width: named constants, so the value readouts below stay distinct. */
+static const double HEIGHT = 1.0;
+static const double WIDTH = 1.0;
 #define GAP 4.0
 #define SPAN (2.0 * WIDTH + GAP)
 #define SIGMA 20.0
-#define START -140.0
+#define START (-140.0)
 #define DECAY_T 200.0
 #define E_LO 0.02
 #define E_HI 0.80
@@ -26,15 +27,19 @@ static int curve_ready, curve_packet_ready;
 
 static void resonances(void)
 {
-    if (res[0][0] >= 0.0)
+    if (res[0][0] >= 0.0) {
         return;
+    }
     double e = 0.0, g = 0.0;
-    if (double_barrier_resonance(HEIGHT, WIDTH, GAP, 0.01, HEIGHT, &e, &g) == 0) {
+    if (double_barrier_resonance((DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP},
+                                 (Span){.from = 0.01, .to = HEIGHT},
+                                 (ResonanceOut){.energy = &e, .fwhm = &g}) == 0) {
         res[0][0] = e;
         res[0][1] = g;
     }
-    if (double_barrier_resonance(HEIGHT, WIDTH, GAP, res[0][0] + 3.0 * res[0][1], HEIGHT, &e, &g) ==
-        0) {
+    if (double_barrier_resonance((DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP},
+                                 (Span){.from = res[0][0] + 3.0 * res[0][1], .to = HEIGHT},
+                                 (ResonanceOut){.energy = &e, .fwhm = &g}) == 0) {
         res[1][0] = e;
         res[1][1] = g;
     }
@@ -56,9 +61,11 @@ static void plan(void)
 
 void rs_launch(void)
 {
-    if (!ready)
+    if (!ready) {
         return;
-    wave_set_double_barrier(&wave, 0.0, WIDTH, GAP, HEIGHT);
+    }
+    wave_set_double_barrier(&wave, 0.0,
+                            (DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP});
     if (mode == 1) {
         for (int j = 0; j < wave.n; j++) {
             double x = wave_x(&wave, j);
@@ -67,10 +74,11 @@ void rs_launch(void)
                               : 0.0;
         }
         double norm = sqrt(wave_norm(&wave));
-        for (int j = 0; j < wave.n; j++)
+        for (int j = 0; j < wave.n; j++) {
             wave.psi[j] /= norm;
+        }
     } else {
-        wave_gaussian(&wave, START, SIGMA, sqrt(2.0 * energy));
+        wave_gaussian(&wave, (Packet){.center = START, .sigma = SIGMA, .k0 = sqrt(2.0 * energy)});
     }
     steps = 0;
     finished = 0;
@@ -80,8 +88,10 @@ void rs_launch(void)
 int rs_reset(int next_mode)
 {
     if (!ready) {
-        if (wave_init(&wave, (int)((X1 - X0) / DX + 0.5), X0, DX, DT))
+        if (wave_init(&wave,
+                      (Grid){.n = (int)((X1 - X0) / DX + 0.5), .x0 = X0, .dx = DX, .dt = DT})) {
             return 1;
+        }
         ready = 1;
     }
     resonances();
@@ -92,11 +102,13 @@ int rs_reset(int next_mode)
 
 void rs_energy(double next)
 {
-    if (!ready || !isfinite(next))
+    if (!ready || !isfinite(next)) {
         return;
+    }
     next = fmax(RS_E_MIN, fmin(RS_E_MAX, next));
-    if (next != energy)
+    if (next != energy) {
         packet_t = -1.0;
+    }
     energy = next;
     mode = 0;
     rs_launch();
@@ -104,24 +116,28 @@ void rs_energy(double next)
 
 void rs_step(int count)
 {
-    if (!ready || count < 0)
+    if (!ready || count < 0) {
         return;
-    if (count > 400)
+    }
+    if (count > 400) {
         count = 400;
+    }
     for (int i = 0; i < count && !finished; i++) {
         wave_step(&wave);
         steps++;
         double t = steps * DT;
         if (t >= tmax - 1e-9 ||
-            (mode == 0 && t >= t0 && wave_prob_between(&wave, WIDTH, WIDTH + GAP) < 1e-5))
+            (mode == 0 && t >= t0 && wave_prob_between(&wave, WIDTH, WIDTH + GAP) < 1e-5)) {
             finished = 1;
+        }
     }
 }
 
 double rs_value(int field)
 {
-    if (!ready)
+    if (!ready) {
         return 0.0;
+    }
     switch (field) {
     case RS_TIME:
         return steps * DT;
@@ -148,10 +164,14 @@ double rs_value(int field)
     case RS_P_RIGHT:
         return wave_prob_right(&wave, SPAN);
     case RS_T_PLANE:
-        return double_barrier_transmission(sqrt(2.0 * energy), HEIGHT, WIDTH, GAP);
+        return double_barrier_transmission(
+            sqrt(2.0 * energy), (DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP});
     case RS_T_PACKET:
-        if (packet_t < 0.0)
-            packet_t = double_packet_transmission(sqrt(2.0 * energy), SIGMA, HEIGHT, WIDTH, GAP);
+        if (packet_t < 0.0) {
+            packet_t = double_packet_transmission(
+                (Launch){.k0 = sqrt(2.0 * energy), .sigma = SIGMA},
+                (DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP});
+        }
         return packet_t;
     case RS_E1:
         return res[0][0];
@@ -192,19 +212,22 @@ static int site_of(double x) { return (int)lround((x - X0) / DX); }
 
 double rs_density(int bin)
 {
-    if (!ready || bin < 0 || bin >= RS_BIN_COUNT)
+    if (!ready || bin < 0 || bin >= RS_BIN_COUNT) {
         return 0.0;
+    }
     int first = site_of(-200.0) + bin * 10;
     double s = 0.0;
-    for (int j = first; j < first + 10; j++)
+    for (int j = first; j < first + 10; j++) {
         s += creal(wave.psi[j] * conj(wave.psi[j]));
+    }
     return s / 10.0;
 }
 
 double rs_zoom(int site)
 {
-    if (!ready || site < 0 || site >= RS_ZOOM_COUNT)
+    if (!ready || site < 0 || site >= RS_ZOOM_COUNT) {
         return 0.0;
+    }
     int j = site_of(-3.0) + site;
     return creal(wave.psi[j] * conj(wave.psi[j]));
 }
@@ -213,11 +236,15 @@ static double curve_energy(int i) { return E_LO + (E_HI - E_LO) * i / (RS_CURVE_
 
 double rs_curve(int point)
 {
-    if (point < 0 || point >= RS_CURVE_COUNT)
+    if (point < 0 || point >= RS_CURVE_COUNT) {
         return 0.0;
+    }
     if (!curve_ready) {
-        for (int i = 0; i < RS_CURVE_COUNT; i++)
-            curve[i] = double_barrier_transmission(sqrt(2.0 * curve_energy(i)), HEIGHT, WIDTH, GAP);
+        for (int i = 0; i < RS_CURVE_COUNT; i++) {
+            curve[i] = double_barrier_transmission(
+                sqrt(2.0 * curve_energy(i)),
+                (DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP});
+        }
         curve_ready = 1;
     }
     return curve[point];
@@ -225,12 +252,15 @@ double rs_curve(int point)
 
 double rs_curve_packet(int point)
 {
-    if (point < 0 || point >= RS_CURVE_COUNT)
+    if (point < 0 || point >= RS_CURVE_COUNT) {
         return 0.0;
+    }
     if (!curve_packet_ready) {
-        for (int i = 0; i < RS_CURVE_COUNT; i++)
-            curve_packet[i] =
-                double_packet_transmission(sqrt(2.0 * curve_energy(i)), SIGMA, HEIGHT, WIDTH, GAP);
+        for (int i = 0; i < RS_CURVE_COUNT; i++) {
+            curve_packet[i] = double_packet_transmission(
+                (Launch){.k0 = sqrt(2.0 * curve_energy(i)), .sigma = SIGMA},
+                (DoubleBarrier){.height = HEIGHT, .width = WIDTH, .gap = GAP});
+        }
         curve_packet_ready = 1;
     }
     return curve_packet[point];

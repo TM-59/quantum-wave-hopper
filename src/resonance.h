@@ -46,9 +46,9 @@ enum {
  * the well. */
 int rs_reset(int mode);
 void rs_energy(
-    double energy); /* clamped to [RS_E_MIN, RS_E_MAX]; launches a fresh packet in mode 0 */
+    double next); /* clamped to [RS_E_MIN, RS_E_MAX]; launches a fresh packet in mode 0 */
 void rs_launch(void);
-void rs_step(int steps); /* at most 400 per call; stops at the end of the run */
+void rs_step(int count); /* at most 400 per call; stops at the end of the run */
 double rs_value(int field);
 double rs_density(int bin);        /* mean |psi|^2 over the bin of the view */
 double rs_zoom(int site);          /* |psi|^2 at a site of the zoom around the barriers */
