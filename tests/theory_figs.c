@@ -29,7 +29,8 @@ static const char *path(const char *name)
     return buf;
 }
 
-static void plot(const char *name, const char *title, const char *xl, const char *yl, int count, const Series *s, int ns)
+static void plot(const char *name, const char *title, const char *xl, const char *yl, int count,
+                 const Series *s, int ns)
 {
     if (svg_plot(path(name), title, xl, yl, xs, count, s, ns) != 0) {
         fprintf(stderr, "cannot write %s\n", name);
@@ -37,7 +38,8 @@ static void plot(const char *name, const char *title, const char *xl, const char
     }
 }
 
-/* One row of the measured-values table: id | what | measured | theory | error (relative; absolute when theory is 0). */
+/* One row of the measured-values table: id | what | measured | theory | error (relative; absolute
+ * when theory is 0). */
 static void value(const char *id, const char *what, double measured, double theory)
 {
     double err = theory != 0.0 ? fabs(measured / theory - 1.0) : fabs(measured - theory);
@@ -46,7 +48,10 @@ static void value(const char *id, const char *what, double measured, double theo
 
 static void must(int failed)
 {
-    if (failed) { fprintf(stderr, "out of memory\n"); exit(1); }
+    if (failed) {
+        fprintf(stderr, "out of memory\n");
+        exit(1);
+    }
 }
 
 /* S01: norm and energy of the game's own experiment, step by step. */
@@ -62,14 +67,30 @@ static void fig_conservation(void)
         double dn = wave_norm(&w) - 1.0, de = wave_energy(&w) / e0 - 1.0;
         worst_n = fmax(worst_n, fabs(dn));
         worst_e = fmax(worst_e, fabs(de));
-        if (k % 15 == 0) { xs[n] = (float)(k * 0.05); ya[n] = (float)(dn * 1e12); yb[n] = (float)(de * 1e12); n++; }
-        if (k < 3300) wave_step(&w);
+        if (k % 15 == 0) {
+            xs[n] = (float)(k * 0.05);
+            ya[n] = (float)(dn * 1e12);
+            yb[n] = (float)(de * 1e12);
+            n++;
+        }
+        if (k < 3300)
+            wave_step(&w);
     }
-    value("norm-drift", "largest departure of the total probability from 1 over the 3300 steps of the standard experiment (theory 0)", worst_n, 0.0);
-    value("energy-drift", "largest relative change of the mean energy over the same run, barrier included (theory 0)", worst_e, 0.0);
-    value("energy-packet", "mean energy of the packet k0 = 1, sigma = 10 on the grid (continuum k0^2 / 2 + 1 / (8 sigma^2))", e0, 0.5 + 1.0 / 800.0);
+    value("norm-drift",
+          "largest departure of the total probability from 1 over the 3300 steps of the standard "
+          "experiment (theory 0)",
+          worst_n, 0.0);
+    value(
+        "energy-drift",
+        "largest relative change of the mean energy over the same run, barrier included (theory 0)",
+        worst_e, 0.0);
+    value("energy-packet",
+          "mean energy of the packet k0 = 1, sigma = 10 on the grid (continuum k0^2 / 2 + 1 / (8 "
+          "sigma^2))",
+          e0, 0.5 + 1.0 / 800.0);
     Series s[] = {{"norm - 1 (x 1e12)", ya, "#1f77b4"}, {"E / E0 - 1 (x 1e12)", yb, "#d62728"}};
-    plot("conservation.svg", "Total probability and mean energy through a tunnelling run", "t", "departure x 1e12", n, s, 2);
+    plot("conservation.svg", "Total probability and mean energy through a tunnelling run", "t",
+         "departure x 1e12", n, s, 2);
     wave_free(&w);
 }
 
@@ -91,20 +112,32 @@ static void fig_packet(void)
             yc[n] = (float)((wave_mean_x(&w) + 40.0) / 10.0);
             n++;
         }
-        if (k == 3000) { mean_end = wave_mean_x(&w); width_end = sqrt(wave_variance_x(&w)); }
-        if (k < 3000) wave_step(&w);
+        if (k == 3000) {
+            mean_end = wave_mean_x(&w);
+            width_end = sqrt(wave_variance_x(&w));
+        }
+        if (k < 3000)
+            wave_step(&w);
     }
-    value("packet-centre", "centre of a free packet (k0 = 1.5, sigma = 2) after t = 30, started at -40 (theory -40 + k0 t)", mean_end, -40.0 + 1.5 * 30.0);
-    value("packet-width", "its width after t = 30 (theory sigma sqrt(1 + (t / 2 sigma^2)^2))", width_end, sigma * sqrt(1.0 + 900.0 / 64.0));
+    value("packet-centre",
+          "centre of a free packet (k0 = 1.5, sigma = 2) after t = 30, started at -40 (theory -40 "
+          "+ k0 t)",
+          mean_end, -40.0 + 1.5 * 30.0);
+    value("packet-width", "its width after t = 30 (theory sigma sqrt(1 + (t / 2 sigma^2)^2))",
+          width_end, sigma * sqrt(1.0 + 900.0 / 64.0));
     Wave g;
     must(wave_init(&g, 4000, -100.0, 0.05, 0.01));
     wave_gaussian(&g, 0.0, 2.0, 1.5);
-    value("packet-width-0", "width of the packet as launched (theory sigma = 2)", sqrt(wave_variance_x(&g)), 2.0);
+    value("packet-width-0", "width of the packet as launched (theory sigma = 2)",
+          sqrt(wave_variance_x(&g)), 2.0);
     value("packet-norm-0", "wave_norm right after wave_gaussian (theory 1)", wave_norm(&g), 1.0);
-    value("packet-energy", "its mean energy (theory k0^2 / 2 + 1 / (8 sigma^2) = 1.125 + 0.03125)", wave_energy(&g), 1.15625);
+    value("packet-energy", "its mean energy (theory k0^2 / 2 + 1 / (8 sigma^2) = 1.125 + 0.03125)",
+          wave_energy(&g), 1.15625);
     wave_free(&g);
-    Series s[] = {{"width", ya, "#1f77b4"}, {"theory", yb, "#d62728"}, {"distance / 10", yc, "#888888"}};
-    plot("packet.svg", "A free packet: spreading width and distance covered", "t", "width, distance / 10", n, s, 3);
+    Series s[] = {
+        {"width", ya, "#1f77b4"}, {"theory", yb, "#d62728"}, {"distance / 10", yc, "#888888"}};
+    plot("packet.svg", "A free packet: spreading width and distance covered", "t",
+         "width, distance / 10", n, s, 3);
     wave_free(&w);
 }
 
@@ -117,7 +150,8 @@ static double centre_speed(double k0, double dx, double dt)
     wave_gaussian(&w, -100.0, 10.0, k0);
     int steps = (int)(60.0 / k0 / dt);
     double x0 = wave_mean_x(&w);
-    for (int k = 0; k < steps; k++) wave_step(&w);
+    for (int k = 0; k < steps; k++)
+        wave_step(&w);
     double v = (wave_mean_x(&w) - x0) / (steps * dt);
     wave_free(&w);
     return v;
@@ -136,13 +170,22 @@ static void fig_dispersion(void)
         yc[n] = 1.0f;
     }
     double e1 = (1.0 - cos(dx)) / (dx * dx), q1 = 0.5 * e1 * dt;
-    value("group-speed-k1", "speed of the packet centre at k0 = 1 on the game's grid (dx 0.1, dt 0.05) (theory of the scheme: sin(k dx) / dx / (1 + (E dt / 2)^2))", centre_speed(1.0, dx, dt), sin(dx) / dx / (1.0 + q1 * q1));
-    value("group-speed-k1-ideal", "the same against the continuum value k0 = 1", centre_speed(1.0, dx, dt), 1.0);
+    value("group-speed-k1",
+          "speed of the packet centre at k0 = 1 on the game's grid (dx 0.1, dt 0.05) (theory of "
+          "the scheme: sin(k dx) / dx / (1 + (E dt / 2)^2))",
+          centre_speed(1.0, dx, dt), sin(dx) / dx / (1.0 + q1 * q1));
+    value("group-speed-k1-ideal", "the same against the continuum value k0 = 1",
+          centre_speed(1.0, dx, dt), 1.0);
     double e3 = (1.0 - cos(3.0 * dx)) / (dx * dx), q3 = 0.5 * e3 * dt;
-    value("group-speed-k3", "speed at k0 = 3 (theory of the scheme)", centre_speed(3.0, dx, dt), sin(3.0 * dx) / dx / (1.0 + q3 * q3));
-    value("group-speed-k3-ideal", "the same against the continuum value 3", centre_speed(3.0, dx, dt), 3.0);
-    Series s[] = {{"measured / k", ya, "#1f77b4"}, {"scheme / k", yb, "#d62728"}, {"continuum", yc, "#888888"}};
-    plot("dispersion.svg", "Group velocity on the grid, relative to the continuum value k", "k0", "speed / k0", n, s, 3);
+    value("group-speed-k3", "speed at k0 = 3 (theory of the scheme)", centre_speed(3.0, dx, dt),
+          sin(3.0 * dx) / dx / (1.0 + q3 * q3));
+    value("group-speed-k3-ideal", "the same against the continuum value 3",
+          centre_speed(3.0, dx, dt), 3.0);
+    Series s[] = {{"measured / k", ya, "#1f77b4"},
+                  {"scheme / k", yb, "#d62728"},
+                  {"continuum", yc, "#888888"}};
+    plot("dispersion.svg", "Group velocity on the grid, relative to the continuum value k", "k0",
+         "speed / k0", n, s, 3);
 }
 
 /* S04: the continuity equation, exactly as the scheme satisfies it. */
@@ -152,29 +195,47 @@ static void fig_current(void)
     must(wave_init(&w, 3900, -195.0, 0.1, 0.05));
     wave_gaussian(&w, -100.0, 10.0, 1.0);
     wave_set_barrier(&w, 0.0, 2.0, 0.6);
-    int site = (int)((2.0 - w.x0) / w.dx + 0.5), n = 0;   /* first site with x >= 2: the right edge of the barrier */
+    int site = (int)((2.0 - w.x0) / w.dx + 0.5),
+        n = 0; /* first site with x >= 2: the right edge of the barrier */
     double complex *old = malloc(sizeof *old * (size_t)w.n);
     must(!old);
     double worst = 0.0, total = 0.0, peak = 0.0;
     for (int k = 0; k < 3300; k++) {
         memcpy(old, w.psi, sizeof *old * (size_t)w.n);
         double before = 0.0, after = 0.0;
-        for (int j = site; j < w.n; j++) before += creal(old[j] * conj(old[j])) * w.dx;
+        for (int j = site; j < w.n; j++)
+            before += creal(old[j] * conj(old[j])) * w.dx;
         wave_step(&w);
-        for (int j = site; j < w.n; j++) after += creal(w.psi[j] * conj(w.psi[j])) * w.dx;
-        double complex a = 0.5 * (old[site - 1] + w.psi[site - 1]), b = 0.5 * (old[site] + w.psi[site]);
-        double current = cimag(conj(a) * b) / w.dx;       /* probability per unit time crossing from site-1 to site */
+        for (int j = site; j < w.n; j++)
+            after += creal(w.psi[j] * conj(w.psi[j])) * w.dx;
+        double complex a = 0.5 * (old[site - 1] + w.psi[site - 1]),
+                       b = 0.5 * (old[site] + w.psi[site]);
+        double current =
+            cimag(conj(a) * b) / w.dx; /* probability per unit time crossing from site-1 to site */
         worst = fmax(worst, fabs((after - before) / w.dt - current));
         total += current * w.dt;
         peak = fmax(peak, current);
-        if (k % 15 == 0) { xs[n] = (float)((k + 0.5) * 0.05); ya[n] = (float)((after - before) / w.dt * 1000.0); yb[n] = (float)(current * 1000.0); n++; }
+        if (k % 15 == 0) {
+            xs[n] = (float)((k + 0.5) * 0.05);
+            ya[n] = (float)((after - before) / w.dt * 1000.0);
+            yb[n] = (float)(current * 1000.0);
+            n++;
+        }
     }
-    value("continuity", "largest difference between the rate of change of the probability beyond the barrier and the current through its edge, over 3300 steps (theory 0)", worst, 0.0);
-    value("current-integral", "that current added up over the run against the probability found beyond the barrier at the end", total, wave_prob_right(&w, 2.0));
-    value("current-peak", "largest current through the edge [probability per unit time]", peak, 0.0);
+    value("continuity",
+          "largest difference between the rate of change of the probability beyond the barrier and "
+          "the current through its edge, over 3300 steps (theory 0)",
+          worst, 0.0);
+    value("current-integral",
+          "that current added up over the run against the probability found beyond the barrier at "
+          "the end",
+          total, wave_prob_right(&w, 2.0));
+    value("current-peak", "largest current through the edge [probability per unit time]", peak,
+          0.0);
     free(old);
     Series s[] = {{"dP/dt (x 1000)", ya, "#1f77b4"}, {"current (x 1000)", yb, "#d62728"}};
-    plot("current.svg", "Probability arriving beyond the barrier: rate of change against current", "t", "per unit time x 1000", n, s, 2);
+    plot("current.svg", "Probability arriving beyond the barrier: rate of change against current",
+         "t", "per unit time x 1000", n, s, 2);
     wave_free(&w);
 }
 
@@ -187,20 +248,34 @@ static void fig_barrier(void)
         double k = sqrt(2.0 * e);
         xs[n] = (float)(e / height);
         ya[n] = (float)barrier_transmission(k, height, width);
-        yb[n] = (float)(e > height ? 1.0 : 0.0);   /* a classical particle */
+        yb[n] = (float)(e > height ? 1.0 : 0.0); /* a classical particle */
     }
-    value("barrier-none", "barrier_transmission with no barrier (theory 1)", barrier_transmission(2.0, 0.0, 3.0), 1.0);
-    value("barrier-game", "plane wave k = 1 at the standard barrier V = 0.6, width 2: E / V = 0.83 (theory: the tunnelling formula)", barrier_transmission(1.0, 0.6, 2.0),
+    value("barrier-none", "barrier_transmission with no barrier (theory 1)",
+          barrier_transmission(2.0, 0.0, 3.0), 1.0);
+    value("barrier-game",
+          "plane wave k = 1 at the standard barrier V = 0.6, width 2: E / V = 0.83 (theory: the "
+          "tunnelling formula)",
+          barrier_transmission(1.0, 0.6, 2.0),
           1.0 / (1.0 + 0.36 * pow(sinh(sqrt(0.2) * 2.0), 2) / (4.0 * 0.5 * 0.1)));
-    value("barrier-at-top", "exactly at E = V = 0.6 (theory 1 / (1 + V w^2 / 2))", barrier_transmission(sqrt(1.2), 0.6, 2.0), 1.0 / (1.0 + 0.5 * 0.6 * 4.0));
+    value("barrier-at-top", "exactly at E = V = 0.6 (theory 1 / (1 + V w^2 / 2))",
+          barrier_transmission(sqrt(1.2), 0.6, 2.0), 1.0 / (1.0 + 0.5 * 0.6 * 4.0));
     double q = PI / width, eres = height + 0.5 * q * q;
-    value("barrier-resonance", "at the first resonance above the barrier, q w = pi (theory 1)", barrier_transmission(sqrt(2.0 * eres), height, width), 1.0);
-    value("barrier-continuity", "jump of the formula across E = V, between E = V (1 - 1e-9) and E = V (1 + 1e-9) (theory 0)",
-          barrier_transmission(sqrt(1.2 * (1.0 + 1e-9)), 0.6, 2.0) - barrier_transmission(sqrt(1.2 * (1.0 - 1e-9)), 0.6, 2.0), 0.0);
-    value("barrier-thick", "a tall, thick barrier: k = 0.5, V = 5, width 4 (theory about 16 E (V - E) / V^2 exp(-2 kappa w))", barrier_transmission(0.5, 5.0, 4.0),
+    value("barrier-resonance", "at the first resonance above the barrier, q w = pi (theory 1)",
+          barrier_transmission(sqrt(2.0 * eres), height, width), 1.0);
+    value("barrier-continuity",
+          "jump of the formula across E = V, between E = V (1 - 1e-9) and E = V (1 + 1e-9) (theory "
+          "0)",
+          barrier_transmission(sqrt(1.2 * (1.0 + 1e-9)), 0.6, 2.0) -
+              barrier_transmission(sqrt(1.2 * (1.0 - 1e-9)), 0.6, 2.0),
+          0.0);
+    value("barrier-thick",
+          "a tall, thick barrier: k = 0.5, V = 5, width 4 (theory about 16 E (V - E) / V^2 exp(-2 "
+          "kappa w))",
+          barrier_transmission(0.5, 5.0, 4.0),
           16.0 * 0.125 * 4.875 / 25.0 * exp(-2.0 * sqrt(9.75) * 4.0));
     Series s[] = {{"quantum T", ya, "#1f77b4"}, {"classical", yb, "#888888"}};
-    plot("barrier.svg", "Transmission of a plane wave (barrier V = 0.6, width 2)", "E / V", "T", n, s, 2);
+    plot("barrier.svg", "Transmission of a plane wave (barrier V = 0.6, width 2)", "E / V", "T", n,
+         s, 2);
 }
 
 /* S06: the experiment against the packet-averaged formula. */
@@ -209,19 +284,33 @@ static void fig_experiment(void)
     int n = 0;
     double worst = 0.0;
     for (double h = 0.0; h <= 1.5001; h += 0.1, n++) {
-        double sim = simulate_transmission(1.0, 10.0, h, 2.0), th = packet_transmission(1.0, 10.0, h, 2.0);
+        double sim = simulate_transmission(1.0, 10.0, h, 2.0),
+               th = packet_transmission(1.0, 10.0, h, 2.0);
         xs[n] = (float)h;
         ya[n] = (float)sim;
         yb[n] = (float)th;
         yc[n] = (float)barrier_transmission(1.0, h, 2.0);
-        if (th > 0.01) worst = fmax(worst, fabs(sim / th - 1.0));
+        if (th > 0.01)
+            worst = fmax(worst, fabs(sim / th - 1.0));
     }
-    value("tunnel-sim", "transmitted probability of the simulated packet at V = 0.6 (theory: the packet-averaged formula)", simulate_transmission(1.0, 10.0, 0.6, 2.0), packet_transmission(1.0, 10.0, 0.6, 2.0));
-    value("tunnel-plane", "the packet-averaged formula at V = 0.6 against the single plane wave k = 1", packet_transmission(1.0, 10.0, 0.6, 2.0), barrier_transmission(1.0, 0.6, 2.0));
-    value("tunnel-worst", "largest relative gap between simulation and packet formula over 16 heights, where T is above 0.01", worst, 0.0);
-    value("tunnel-free", "simulated transmission with no barrier (theory 1)", simulate_transmission(1.0, 10.0, 0.0, 2.0), 1.0);
-    Series s[] = {{"simulated packet", ya, "#1f77b4"}, {"packet formula", yb, "#d62728"}, {"plane wave k = 1", yc, "#888888"}};
-    plot("experiment.svg", "Transmitted probability against barrier height (k0 = 1, width 2)", "barrier height V", "T", n, s, 3);
+    value("tunnel-sim",
+          "transmitted probability of the simulated packet at V = 0.6 (theory: the packet-averaged "
+          "formula)",
+          simulate_transmission(1.0, 10.0, 0.6, 2.0), packet_transmission(1.0, 10.0, 0.6, 2.0));
+    value("tunnel-plane",
+          "the packet-averaged formula at V = 0.6 against the single plane wave k = 1",
+          packet_transmission(1.0, 10.0, 0.6, 2.0), barrier_transmission(1.0, 0.6, 2.0));
+    value("tunnel-worst",
+          "largest relative gap between simulation and packet formula over 16 heights, where T is "
+          "above 0.01",
+          worst, 0.0);
+    value("tunnel-free", "simulated transmission with no barrier (theory 1)",
+          simulate_transmission(1.0, 10.0, 0.0, 2.0), 1.0);
+    Series s[] = {{"simulated packet", ya, "#1f77b4"},
+                  {"packet formula", yb, "#d62728"},
+                  {"plane wave k = 1", yc, "#888888"}};
+    plot("experiment.svg", "Transmitted probability against barrier height (k0 = 1, width 2)",
+         "barrier height V", "T", n, s, 3);
 }
 
 /* S07: Crank-Nicolson keeps the norm; the explicit scheme does not. */
@@ -242,24 +331,32 @@ static void fig_unitarity(void)
         yb[n] = (float)log10(wave_norm(&e));
         n++;
         wave_step(&w);
-        for (int j = 0; j < e.n; j++) {   /* explicit Euler: psi - i dt H psi */
+        for (int j = 0; j < e.n; j++) { /* explicit Euler: psi - i dt H psi */
             double complex l = j > 0 ? e.psi[j - 1] : 0.0, r = j < e.n - 1 ? e.psi[j + 1] : 0.0;
             tmp[j] = e.psi[j] - I * e.dt * (inv * e.psi[j] - 0.5 * inv * (l + r));
         }
         memcpy(e.psi, tmp, sizeof *tmp * 800);
     }
     value("cn-norm-60", "norm after 60 Crank-Nicolson steps (theory 1)", wave_norm(&w), 1.0);
-    value("euler-norm-60", "log10 of the norm after 60 explicit Euler steps on the same grid (unstable: it grows without bound)", log10(wave_norm(&e)), 0.0);
+    value("euler-norm-60",
+          "log10 of the norm after 60 explicit Euler steps on the same grid (unstable: it grows "
+          "without bound)",
+          log10(wave_norm(&e)), 0.0);
     /* A step 200 times longer is still norm-preserving. */
     Wave big;
     must(wave_init(&big, 800, -40.0, 0.1, 10.0));
     wave_gaussian(&big, 0.0, 3.0, 1.0);
-    for (int k = 0; k < 50; k++) wave_step(&big);
-    value("cn-norm-big-step", "norm after 50 Crank-Nicolson steps of dt = 10, 200 times the game's (theory 1: unitary for any step)", wave_norm(&big), 1.0);
+    for (int k = 0; k < 50; k++)
+        wave_step(&big);
+    value("cn-norm-big-step",
+          "norm after 50 Crank-Nicolson steps of dt = 10, 200 times the game's (theory 1: unitary "
+          "for any step)",
+          wave_norm(&big), 1.0);
     wave_free(&big);
     free(tmp);
     Series s[] = {{"Crank-Nicolson", ya, "#1f77b4"}, {"explicit Euler", yb, "#d62728"}};
-    plot("unitarity.svg", "Total probability over 60 steps (log scale)", "step", "log10 of the norm", n, s, 2);
+    plot("unitarity.svg", "Total probability over 60 steps (log scale)", "step",
+         "log10 of the norm", n, s, 2);
     wave_free(&w);
     wave_free(&e);
 }
@@ -284,13 +381,20 @@ static void val_thomas(void)
         double complex h_new = (inv + w.v[j]) * w.psi[j] - 0.5 * inv * (ln + rn);
         worst = fmax(worst, cabs((w.psi[j] + I * r * h_new) - (old[j] - I * r * h_old)));
     }
-    value("thomas-residual", "largest residual of (1 + i dt H / 2) psi_new = (1 - i dt H / 2) psi_old over the 3900 sites after one step (theory 0)", worst, 0.0);
+    value("thomas-residual",
+          "largest residual of (1 + i dt H / 2) psi_new = (1 - i dt H / 2) psi_old over the 3900 "
+          "sites after one step (theory 0)",
+          worst, 0.0);
     /* Reversing time: a step with -dt undoes a step with +dt. */
     w.dt = -w.dt;
     wave_step(&w);
     double back = 0.0;
-    for (int j = 0; j < n; j++) back = fmax(back, cabs(w.psi[j] - old[j]));
-    value("step-reverse", "largest difference from the start after one step forward and one with dt reversed (theory 0)", back, 0.0);
+    for (int j = 0; j < n; j++)
+        back = fmax(back, cabs(w.psi[j] - old[j]));
+    value("step-reverse",
+          "largest difference from the start after one step forward and one with dt reversed "
+          "(theory 0)",
+          back, 0.0);
     free(old);
     wave_free(&w);
 }
@@ -299,7 +403,8 @@ static void val_thomas(void)
 static double l2(const Wave *a, const Wave *b)
 {
     double s = 0.0;
-    for (int j = 0; j < a->n; j++) s += pow(cabs(a->psi[j] - b->psi[j]), 2);
+    for (int j = 0; j < a->n; j++)
+        s += pow(cabs(a->psi[j] - b->psi[j]), 2);
     return sqrt(s * a->dx);
 }
 
@@ -311,24 +416,33 @@ static void fig_order(void)
     must(wave_init(&ref, 2000, -100.0, 0.1, 0.0015625));
     wave_gaussian(&ref, -30.0, 4.0, 1.0);
     wave_set_barrier(&ref, 0.0, 2.0, 0.6);
-    for (int k = 0; k < 25600; k++) wave_step(&ref);   /* t = 40 */
+    for (int k = 0; k < 25600; k++)
+        wave_step(&ref); /* t = 40 */
     for (int i = 0; i < 6; i++) {
         Wave w;
         must(wave_init(&w, 2000, -100.0, 0.1, dts[i]));
         wave_gaussian(&w, -30.0, 4.0, 1.0);
         wave_set_barrier(&w, 0.0, 2.0, 0.6);
         int steps = (int)(40.0 / dts[i] + 0.5);
-        for (int k = 0; k < steps; k++) wave_step(&w);
+        for (int k = 0; k < steps; k++)
+            wave_step(&w);
         errs[i] = l2(&w, &ref);
         xs[i] = (float)log10(dts[i]);
         ya[i] = (float)log10(errs[i]);
         yb[i] = (float)(log10(errs[0]) + 2.0 * (log10(dts[i]) - log10(dts[0])));
         wave_free(&w);
     }
-    value("order-time", "slope of log(error) against log(dt) between dt = 0.1 and 0.025, same grid, reference dt = 0.0016 (theory 2)", log(errs[2] / errs[4]) / log(4.0), 2.0);
-    value("error-game-dt", "L2 distance from the reference at the game's dt = 0.05 after t = 40 (a wave function of norm 1)", errs[3], 0.0);
+    value("order-time",
+          "slope of log(error) against log(dt) between dt = 0.1 and 0.025, same grid, reference dt "
+          "= 0.0016 (theory 2)",
+          log(errs[2] / errs[4]) / log(4.0), 2.0);
+    value("error-game-dt",
+          "L2 distance from the reference at the game's dt = 0.05 after t = 40 (a wave function of "
+          "norm 1)",
+          errs[3], 0.0);
     Series s[] = {{"error", ya, "#1f77b4"}, {"slope 2", yb, "#d62728"}};
-    plot("order.svg", "Error against time step at t = 40 (log-log)", "log10 dt", "log10 of the L2 error", 6, s, 2);
+    plot("order.svg", "Error against time step at t = 40 (log-log)", "log10 dt",
+         "log10 of the L2 error", 6, s, 2);
     wave_free(&ref);
 }
 
@@ -343,23 +457,40 @@ static void fig_stationary(void)
         w.psi[j] = exp(-x * x / 2.0);
     }
     double norm = sqrt(wave_norm(&w));
-    for (int j = 0; j < w.n; j++) w.psi[j] /= norm;
+    for (int j = 0; j < w.n; j++)
+        w.psi[j] /= norm;
     double p0 = creal(w.psi[400] * conj(w.psi[400])), a0 = creal(w.psi[400]), worst = 0.0;
     int n = 0, zero_step = -1;
     double prev = a0;
     for (int k = 0; k <= 2600; k++) {
         double re = creal(w.psi[400]), p = creal(w.psi[400] * conj(w.psi[400]));
         worst = fmax(worst, fabs(p / p0 - 1.0));
-        if (zero_step < 0 && prev > 0.0 && re <= 0.0) zero_step = k;
+        if (zero_step < 0 && prev > 0.0 && re <= 0.0)
+            zero_step = k;
         prev = re;
-        if (k % 10 == 0) { xs[n] = (float)(k * 0.01); ya[n] = (float)(re / a0); yb[n] = (float)cos(0.5 * k * 0.01); yc[n] = (float)(p / p0); n++; }
-        if (k < 2600) wave_step(&w);
+        if (k % 10 == 0) {
+            xs[n] = (float)(k * 0.01);
+            ya[n] = (float)(re / a0);
+            yb[n] = (float)cos(0.5 * k * 0.01);
+            yc[n] = (float)(p / p0);
+            n++;
+        }
+        if (k < 2600)
+            wave_step(&w);
     }
-    value("ground-energy", "mean energy of the harmonic ground state on the grid (theory 1/2)", wave_energy(&w), 0.5);
-    value("ground-density", "largest relative change of the density at the centre over t = 26, two periods of the phase (theory 0)", worst, 0.0);
-    value("ground-phase", "time at which the real part first crosses zero (theory pi / (2 E) = pi)", zero_step * 0.01, PI);
-    Series s[] = {{"Re psi(0) / start", ya, "#1f77b4"}, {"cos(t / 2)", yb, "#d62728"}, {"density / start", yc, "#2ca02c"}};
-    plot("stationary.svg", "Harmonic ground state: the phase turns, the density stays", "t", "relative value at x = 0", n, s, 3);
+    value("ground-energy", "mean energy of the harmonic ground state on the grid (theory 1/2)",
+          wave_energy(&w), 0.5);
+    value("ground-density",
+          "largest relative change of the density at the centre over t = 26, two periods of the "
+          "phase (theory 0)",
+          worst, 0.0);
+    value("ground-phase", "time at which the real part first crosses zero (theory pi / (2 E) = pi)",
+          zero_step * 0.01, PI);
+    Series s[] = {{"Re psi(0) / start", ya, "#1f77b4"},
+                  {"cos(t / 2)", yb, "#d62728"},
+                  {"density / start", yc, "#2ca02c"}};
+    plot("stationary.svg", "Harmonic ground state: the phase turns, the density stays", "t",
+         "relative value at x = 0", n, s, 3);
     wave_free(&w);
 }
 
@@ -373,17 +504,30 @@ static void fig_walls(void)
     double min_norm = 2.0, turn = -1e9, edge = 0.0;
     for (int k = 0; k <= 1200; k++) {
         double m = wave_mean_x(&w);
-        if (k % 6 == 0) { xs[n] = (float)(k * 0.05); ya[n] = (float)m; yb[n] = (float)(50.0 * wave_norm(&w)); n++; }
+        if (k % 6 == 0) {
+            xs[n] = (float)(k * 0.05);
+            ya[n] = (float)m;
+            yb[n] = (float)(50.0 * wave_norm(&w));
+            n++;
+        }
         min_norm = fmin(min_norm, wave_norm(&w));
         turn = fmax(turn, m);
         edge = fmax(edge, cabs(w.psi[w.n - 1]));
-        if (k < 1200) wave_step(&w);
+        if (k < 1200)
+            wave_step(&w);
     }
-    value("wall-norm", "smallest total probability while a packet reflects off the end of the grid (theory 1: nothing leaves)", min_norm, 1.0);
-    value("wall-return", "mean position after t = 60: started at 20 moving right at 1, wall at 49.9 (theory of a perfect mirror: 2 x 50 - 20 - 60 = 20)", wave_mean_x(&w), 20.0);
+    value("wall-norm",
+          "smallest total probability while a packet reflects off the end of the grid (theory 1: "
+          "nothing leaves)",
+          min_norm, 1.0);
+    value("wall-return",
+          "mean position after t = 60: started at 20 moving right at 1, wall at 49.9 (theory of a "
+          "perfect mirror: 2 x 50 - 20 - 60 = 20)",
+          wave_mean_x(&w), 20.0);
     value("wall-turn", "furthest the mean position gets (the wall is at 49.9)", turn, 0.0);
     Series s[] = {{"mean position", ya, "#1f77b4"}, {"50 x norm", yb, "#d62728"}};
-    plot("walls.svg", "A packet reflecting off the hard wall at the end of the grid", "t", "x", n, s, 2);
+    plot("walls.svg", "A packet reflecting off the hard wall at the end of the grid", "t", "x", n,
+         s, 2);
     wave_free(&w);
     (void)edge;
 }
@@ -399,23 +543,41 @@ static void fig_adapter(void)
         ya[n] = (float)qw_value(QW_P_LEFT);
         yb[n] = (float)qw_value(QW_P_RIGHT);
         yc[n] = (float)(10.0 * qw_value(QW_P_INSIDE));
-        worst_sum = fmax(worst_sum, fabs(qw_value(QW_P_LEFT) + qw_value(QW_P_INSIDE) + qw_value(QW_P_RIGHT) - 1.0));
+        worst_sum = fmax(worst_sum, fabs(qw_value(QW_P_LEFT) + qw_value(QW_P_INSIDE) +
+                                         qw_value(QW_P_RIGHT) - 1.0));
         n++;
         qw_step(15);
     }
     for (int b = 0; b < QW_BIN_COUNT; b++)
-        if (b < 20 || b >= QW_BIN_COUNT - 20) edge += qw_density(b) * 1.0;
+        if (b < 20 || b >= QW_BIN_COUNT - 20)
+            edge += qw_density(b) * 1.0;
     double area = 0.0;
-    for (int b = 0; b < QW_BIN_COUNT; b++) area += qw_density(b) * 1.0;   /* each bin is 10 sites x 0.1 */
-    value("demo-steps", "time at the end of the standard demonstration (theory 3300 x 0.05)", qw_value(QW_TIME), 165.0);
-    value("demo-right", "probability beyond the barrier at the end (theory: the packet formula shown on screen)", qw_value(QW_P_RIGHT), qw_value(QW_THEORY));
-    value("demo-sum", "largest departure of left + inside + right from 1 during the run (theory 0)", worst_sum, 0.0);
-    value("demo-bins-area", "sum of the 390 displayed densities x bin width 1 (theory 1)", area, 1.0);
-    value("demo-edges", "probability in the 20 bins at each end of the grid at the end (the hard walls are not reached)", edge, 0.0);
-    value("demo-energy", "QW_ENERGY at the end (theory: the packet's k0^2 / 2 + 1 / (8 sigma^2))", qw_value(QW_ENERGY), 0.50125);
-    value("demo-locked", "barrier height after qw_controls is called in the demonstration (theory 0.6: controls locked)", (qw_controls(10.0, 1.2), qw_value(QW_HEIGHT)), 0.6);
-    Series s[] = {{"left of the barrier", ya, "#1f77b4"}, {"beyond it", yb, "#d62728"}, {"inside x 10", yc, "#2ca02c"}};
-    plot("demo.svg", "The standard demonstration: where the probability is", "t", "probability", n, s, 3);
+    for (int b = 0; b < QW_BIN_COUNT; b++)
+        area += qw_density(b) * 1.0; /* each bin is 10 sites x 0.1 */
+    value("demo-steps", "time at the end of the standard demonstration (theory 3300 x 0.05)",
+          qw_value(QW_TIME), 165.0);
+    value("demo-right",
+          "probability beyond the barrier at the end (theory: the packet formula shown on screen)",
+          qw_value(QW_P_RIGHT), qw_value(QW_THEORY));
+    value("demo-sum", "largest departure of left + inside + right from 1 during the run (theory 0)",
+          worst_sum, 0.0);
+    value("demo-bins-area", "sum of the 390 displayed densities x bin width 1 (theory 1)", area,
+          1.0);
+    value("demo-edges",
+          "probability in the 20 bins at each end of the grid at the end (the hard walls are not "
+          "reached)",
+          edge, 0.0);
+    value("demo-energy", "QW_ENERGY at the end (theory: the packet's k0^2 / 2 + 1 / (8 sigma^2))",
+          qw_value(QW_ENERGY), 0.50125);
+    value("demo-locked",
+          "barrier height after qw_controls is called in the demonstration (theory 0.6: controls "
+          "locked)",
+          (qw_controls(10.0, 1.2), qw_value(QW_HEIGHT)), 0.6);
+    Series s[] = {{"left of the barrier", ya, "#1f77b4"},
+                  {"beyond it", yb, "#d62728"},
+                  {"inside x 10", yc, "#2ca02c"}};
+    plot("demo.svg", "The standard demonstration: where the probability is", "t", "probability", n,
+         s, 3);
 
     /* The half-through demonstration and the bisection behind it. */
     double half = qw_half_height();
@@ -425,27 +587,45 @@ static void fig_adapter(void)
         ya[n] = (float)packet_transmission(1.0, 10.0, h, 2.0);
         yb[n] = 0.5f;
     }
-    value("half-height", "barrier height found by qw_half_height (the packet formula there should be 0.5)", packet_transmission(1.0, 10.0, half, 2.0), 0.5);
+    value("half-height",
+          "barrier height found by qw_half_height (the packet formula there should be 0.5)",
+          packet_transmission(1.0, 10.0, half, 2.0), 0.5);
     value("half-height-value", "that height, in units where the packet's energy is 0.5", half, 0.0);
     qw_reset(2);
-    while (!qw_value(QW_DONE)) qw_step(400);
-    value("half-right", "probability beyond the barrier at the end of the half-through demonstration (theory 0.5)", qw_value(QW_P_RIGHT), 0.5);
+    while (!qw_value(QW_DONE))
+        qw_step(400);
+    value(
+        "half-right",
+        "probability beyond the barrier at the end of the half-through demonstration (theory 0.5)",
+        qw_value(QW_P_RIGHT), 0.5);
     Series hs[] = {{"packet formula", ya, "#1f77b4"}, {"T = 0.5", yb, "#d62728"}};
-    plot("half.svg", "Packet formula against height, and the height for T = 0.5", "barrier height V", "T", n, hs, 2);
+    plot("half.svg", "Packet formula against height, and the height for T = 0.5",
+         "barrier height V", "T", n, hs, 2);
 
     /* Manual mode: the controls are clamped and snapped. */
     qw_reset(0);
     qw_controls(13.2, 9.0);
-    value("manual-left", "barrier position after asking for 13.2 (theory 14: snapped to the 2-wide grid of the barrier)", qw_value(QW_LEFT), 14.0);
-    value("manual-height", "barrier height after asking for 9 (theory 1.5: clamped)", qw_value(QW_HEIGHT), 1.5);
+    value("manual-left",
+          "barrier position after asking for 13.2 (theory 14: snapped to the 2-wide grid of the "
+          "barrier)",
+          qw_value(QW_LEFT), 14.0);
+    value("manual-height", "barrier height after asking for 9 (theory 1.5: clamped)",
+          qw_value(QW_HEIGHT), 1.5);
     qw_controls(-500.0, -1.0);
-    value("manual-left-min", "position after asking for -500 (theory -40)", qw_value(QW_LEFT), -40.0);
+    value("manual-left-min", "position after asking for -500 (theory -40)", qw_value(QW_LEFT),
+          -40.0);
     value("manual-height-min", "height after asking for -1 (theory 0)", qw_value(QW_HEIGHT), 0.0);
     qw_step(5000);
-    value("manual-clamp", "time after one call asking for 5000 steps (theory 400 x 0.05: one call is clamped)", qw_value(QW_TIME), 20.0);
+    value("manual-clamp",
+          "time after one call asking for 5000 steps (theory 400 x 0.05: one call is clamped)",
+          qw_value(QW_TIME), 20.0);
     qw_launch();
-    value("manual-launch", "time after qw_launch (theory 0: a fresh packet)", qw_value(QW_TIME), 0.0);
-    value("manual-real", "qw_real in the bin just right of the packet centre over the square root of qw_density there: the bin centre is 0.5 from the packet centre (theory cos(k0 x 0.5))", qw_real(95) / sqrt(qw_density(95)), cos(0.5));
+    value("manual-launch", "time after qw_launch (theory 0: a fresh packet)", qw_value(QW_TIME),
+          0.0);
+    value("manual-real",
+          "qw_real in the bin just right of the packet centre over the square root of qw_density "
+          "there: the bin centre is 0.5 from the packet centre (theory cos(k0 x 0.5))",
+          qw_real(95) / sqrt(qw_density(95)), cos(0.5));
 }
 
 /* ---- Two barriers (M2): S20..S25 ---- */
@@ -464,29 +644,47 @@ static void fig_layers(void)
         yc[n] = (float)(t + r);
         worst = fmax(worst, fabs(t - barrier_transmission(k, 0.6, 2.0)));
         worst_sum = fmax(worst_sum, fabs(t + r - 1.0));
-        worst_gap0 = fmax(worst_gap0, fabs(double_barrier_transmission(k, 1.0, 1.0, 0.0) - barrier_transmission(k, 1.0, 2.0)));
+        worst_gap0 = fmax(worst_gap0, fabs(double_barrier_transmission(k, 1.0, 1.0, 0.0) -
+                                           barrier_transmission(k, 1.0, 2.0)));
     }
-    double e5[6] = {-1.0, 0.0, 1.0, 5.0, 6.0, 7.5}, h5[5] = {0.3, 1.0, 0.0, 1.0, 0.2}, r5, sum5 = 0.0;
+    double e5[6] = {-1.0, 0.0, 1.0, 5.0, 6.0, 7.5}, h5[5] = {0.3, 1.0, 0.0, 1.0, 0.2}, r5,
+           sum5 = 0.0;
     for (double e = 0.01; e <= 2.0; e += 0.01) {
         double t5 = layers_transmission(sqrt(2.0 * e), 5, e5, h5, &r5);
         sum5 = fmax(sum5, fabs(t5 + r5 - 1.0));
     }
-    value("layers-single", "largest difference between one transfer-matrix layer and the closed-form barrier formula, V = 0.6, width 2, 300 energies (theory 0)", worst, 0.0);
-    value("layers-sum", "largest |T + R - 1| for that layer (theory 0: the current is conserved)", worst_sum, 0.0);
-    value("layers-sum-5", "largest |T + R - 1| for an uneven stack of five layers, 200 energies (theory 0)", sum5, 0.0);
-    value("layers-gap0", "largest difference between two barriers of width 1 with no gap and one barrier of width 2 (theory 0)", worst_gap0, 0.0);
-    Series s[] = {{"transfer matrices", ya, "#1f77b4"}, {"closed form", yb, "#d62728"}, {"T + R", yc, "#888888"}};
-    plot("layers.svg", "One layer by transfer matrices against the closed form (V = 0.6, width 2)", "E / V", "T", n, s, 3);
+    value("layers-single",
+          "largest difference between one transfer-matrix layer and the closed-form barrier "
+          "formula, V = 0.6, width 2, 300 energies (theory 0)",
+          worst, 0.0);
+    value("layers-sum", "largest |T + R - 1| for that layer (theory 0: the current is conserved)",
+          worst_sum, 0.0);
+    value("layers-sum-5",
+          "largest |T + R - 1| for an uneven stack of five layers, 200 energies (theory 0)", sum5,
+          0.0);
+    value("layers-gap0",
+          "largest difference between two barriers of width 1 with no gap and one barrier of width "
+          "2 (theory 0)",
+          worst_gap0, 0.0);
+    Series s[] = {{"transfer matrices", ya, "#1f77b4"},
+                  {"closed form", yb, "#d62728"},
+                  {"T + R", yc, "#888888"}};
+    plot("layers.svg", "One layer by transfer matrices against the closed form (V = 0.6, width 2)",
+         "E / V", "T", n, s, 3);
 }
 
-/* Closed-form amplitudes of one barrier on [0, b], and the Fabry-Perot sum for two of them a gap apart. */
+/* Closed-form amplitudes of one barrier on [0, b], and the Fabry-Perot sum for two of them a gap
+ * apart. */
 static double fabry_perot(double k, double height, double b, double gap, double *phase)
 {
     double complex kappa = csqrt(2.0 * (height - 0.5 * k * k) + 0.0 * I);
-    double complex den = ccosh(kappa * b) + I * (kappa * kappa - k * k) / (2.0 * k * kappa) * csinh(kappa * b);
-    double complex t0 = cexp(-I * k * b) / den, r0 = -I * (k * k + kappa * kappa) / (2.0 * k * kappa) * csinh(kappa * b) / den;
+    double complex den =
+        ccosh(kappa * b) + I * (kappa * kappa - k * k) / (2.0 * k * kappa) * csinh(kappa * b);
+    double complex t0 = cexp(-I * k * b) / den,
+                   r0 = -I * (k * k + kappa * kappa) / (2.0 * k * kappa) * csinh(kappa * b) / den;
     double complex loop = r0 * r0 * cexp(2.0 * I * k * gap), d = 1.0 - loop;
-    if (phase) *phase = remainder(carg(loop), 2.0 * PI);
+    if (phase)
+        *phase = remainder(carg(loop), 2.0 * PI);
     double tt = creal(t0 * conj(t0));
     return tt * tt / creal(d * conj(d));
 }
@@ -506,25 +704,46 @@ static void fig_double(void)
         ya[n] = (float)log10(t);
         yb[n] = (float)log10(barrier_transmission(k, 1.0, 1.0));
         yc[n] = (float)log10(fabry_perot(k, 1.0, 1.0, 4.0, NULL));
-        if (fabs(e - 1.0) > 1e-6) worst = fmax(worst, fabs(t - fabry_perot(k, 1.0, 1.0, 4.0, NULL)));
+        if (fabs(e - 1.0) > 1e-6)
+            worst = fmax(worst, fabs(t - fabry_perot(k, 1.0, 1.0, 4.0, NULL)));
     }
     double ph1, ph2, box1 = 0.5 * pow(PI / 4.0, 2), box2 = 0.5 * pow(2.0 * PI / 4.0, 2);
     fabry_perot(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0, &ph1);
     fabry_perot(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0, &ph2);
-    value("fp-diff", "largest difference between the transfer matrices and the Fabry-Perot closed form for two barriers (V = 1, width 1, gap 4), 599 energies (theory 0)", worst, 0.0);
-    value("res-e1", "first resonance energy, the peak of T found by double_barrier_resonance (theory: below the lowest box level pi^2 / (2 L^2) = 0.3084)", res_e[0], box1);
+    value("fp-diff",
+          "largest difference between the transfer matrices and the Fabry-Perot closed form for "
+          "two barriers (V = 1, width 1, gap 4), 599 energies (theory 0)",
+          worst, 0.0);
+    value("res-e1",
+          "first resonance energy, the peak of T found by double_barrier_resonance (theory: below "
+          "the lowest box level pi^2 / (2 L^2) = 0.3084)",
+          res_e[0], box1);
     value("res-e2", "second resonance energy (box level 2 pi^2 / L^2 = 1.2337)", res_e[1], box2);
-    value("res-t1", "T at the first resonance (theory 1: a symmetric pair transmits fully)", double_barrier_transmission(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0), 1.0);
-    value("res-t2", "T at the second resonance (theory 1)", double_barrier_transmission(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0), 1.0);
-    value("res-phase1", "round-trip phase 2 arg r0 + 2 k L at the first resonance, reduced to (-pi, pi] (theory 0)", ph1, 0.0);
+    value("res-t1", "T at the first resonance (theory 1: a symmetric pair transmits fully)",
+          double_barrier_transmission(sqrt(2.0 * res_e[0]), 1.0, 1.0, 4.0), 1.0);
+    value("res-t2", "T at the second resonance (theory 1)",
+          double_barrier_transmission(sqrt(2.0 * res_e[1]), 1.0, 1.0, 4.0), 1.0);
+    value(
+        "res-phase1",
+        "round-trip phase 2 arg r0 + 2 k L at the first resonance, reduced to (-pi, pi] (theory 0)",
+        ph1, 0.0);
     value("res-phase2", "the same at the second resonance (theory 0)", ph2, 0.0);
     double mid = 0.30, km = sqrt(2.0 * mid);
-    value("res-dark", "T of the pair at E = 0.30, between the resonances, against one barrier alone", double_barrier_transmission(km, 1.0, 1.0, 4.0), barrier_transmission(km, 1.0, 1.0));
+    value("res-dark",
+          "T of the pair at E = 0.30, between the resonances, against one barrier alone",
+          double_barrier_transmission(km, 1.0, 1.0, 4.0), barrier_transmission(km, 1.0, 1.0));
     double edges[4] = {0.0, 1.0, 5.0, 6.5}, heights[3] = {1.0, 0.0, 1.0}, best = 0.0;
-    for (double e = 0.10; e < 0.25; e += 1e-5) best = fmax(best, layers_transmission(sqrt(2.0 * e), 3, edges, heights, NULL));
-    value("res-asym", "highest T of an uneven pair (widths 1 and 1.5) near the first resonance (theory: below 1)", best, 1.0);
-    Series s[] = {{"pair (transfer matrices)", ya, "#1f77b4"}, {"one barrier", yb, "#888888"}, {"Fabry-Perot closed form", yc, "#d62728"}};
-    plot("double.svg", "Two barriers (V = 1, width 1, gap 4): log10 T against energy", "energy E", "log10 T", n, s, 3);
+    for (double e = 0.10; e < 0.25; e += 1e-5)
+        best = fmax(best, layers_transmission(sqrt(2.0 * e), 3, edges, heights, NULL));
+    value(
+        "res-asym",
+        "highest T of an uneven pair (widths 1 and 1.5) near the first resonance (theory: below 1)",
+        best, 1.0);
+    Series s[] = {{"pair (transfer matrices)", ya, "#1f77b4"},
+                  {"one barrier", yb, "#888888"},
+                  {"Fabry-Perot closed form", yc, "#d62728"}};
+    plot("double.svg", "Two barriers (V = 1, width 1, gap 4): log10 T against energy", "energy E",
+         "log10 T", n, s, 3);
 }
 
 /* S22: the line shape near the first resonance against the Breit-Wigner Lorentzian. */
@@ -534,11 +753,15 @@ static double bw_gap(double width, float *out, int *count)
     double_barrier_resonance(1.0, width, 4.0, 0.01, 1.0, &e1, &g1);
     int n = 0;
     for (double x = -3.0; x <= 3.0001; x += 0.02, n++) {
-        double t = double_barrier_transmission(sqrt(2.0 * (e1 + x * g1)), 1.0, width, 4.0), bw = 1.0 / (1.0 + 4.0 * x * x);
-        if (out) out[n] = (float)t;
-        if (fabs(x) <= 1.0001) worst = fmax(worst, fabs(t - bw));
+        double t = double_barrier_transmission(sqrt(2.0 * (e1 + x * g1)), 1.0, width, 4.0),
+               bw = 1.0 / (1.0 + 4.0 * x * x);
+        if (out)
+            out[n] = (float)t;
+        if (fabs(x) <= 1.0001)
+            worst = fmax(worst, fabs(t - bw));
     }
-    if (count) *count = n;
+    if (count)
+        *count = n;
     return worst;
 }
 
@@ -553,13 +776,21 @@ static void fig_breit_wigner(void)
     }
     double e15, g15;
     double_barrier_resonance(1.0, 1.5, 4.0, 0.01, 1.0, &e15, &g15);
-    value("bw-gap-1", "largest |T - Lorentzian| within one width of the first resonance, barriers 1 wide (Gamma / E1 = 0.11)", thin, 0.0);
+    value("bw-gap-1",
+          "largest |T - Lorentzian| within one width of the first resonance, barriers 1 wide "
+          "(Gamma / E1 = 0.11)",
+          thin, 0.0);
     value("bw-gap-15", "the same with barriers 1.5 wide (Gamma / E1 = 0.029)", thick, 0.0);
     value("bw-width-15", "width Gamma of that narrower line", g15, 0.0);
-    value("bw-ratio", "ratio of the two gaps against the ratio of Gamma / E1 (theory: the gap is first order in Gamma / E1)",
+    value("bw-ratio",
+          "ratio of the two gaps against the ratio of Gamma / E1 (theory: the gap is first order "
+          "in Gamma / E1)",
           thick / thin, (g15 / e15) / (res_g[0] / res_e[0]));
-    Series s[] = {{"barriers 1 wide", ya, "#1f77b4"}, {"barriers 1.5 wide", yb, "#2ca02c"}, {"Breit-Wigner", yc, "#d62728"}};
-    plot("breit-wigner.svg", "The first resonance against the Lorentzian, in units of its width", "(E - E1) / Gamma", "T", n, s, 3);
+    Series s[] = {{"barriers 1 wide", ya, "#1f77b4"},
+                  {"barriers 1.5 wide", yb, "#2ca02c"},
+                  {"Breit-Wigner", yc, "#d62728"}};
+    plot("breit-wigner.svg", "The first resonance against the Lorentzian, in units of its width",
+         "(E - E1) / Gamma", "T", n, s, 3);
 }
 
 /* S23: what is put between the barriers leaks out at the rate Gamma / hbar. */
@@ -574,25 +805,43 @@ static void fig_decay(void)
         w.psi[j] = x > a && x < b ? sin(PI * (x - a) / 4.0) : 0.0;
     }
     double norm = sqrt(wave_norm(&w));
-    for (int j = 0; j < w.n; j++) w.psi[j] /= norm;
+    for (int j = 0; j < w.n; j++)
+        w.psi[j] /= norm;
     int n = 0;
     double at30 = 0.0;
     for (int k = 0; k <= 4000; k++) {
         double t = k * 0.05, p = wave_prob_between(&w, a, b);
-        if (k == 600) at30 = p;
-        if (k % 40 == 0) { xs[n] = (float)t; ya[n] = (float)log(p); n++; }
-        if (k < 4000) wave_step(&w);
+        if (k == 600)
+            at30 = p;
+        if (k % 40 == 0) {
+            xs[n] = (float)t;
+            ya[n] = (float)log(p);
+            n++;
+        }
+        if (k < 4000)
+            wave_step(&w);
     }
-    for (int i = 0; i < n; i++) yb[i] = (float)(log(at30) - res_g[0] * (xs[i] - 30.0));
+    for (int i = 0; i < n; i++)
+        yb[i] = (float)(log(at30) - res_g[0] * (xs[i] - 30.0));
     wave_free(&w);
     double rate = simulate_well_decay(1.0, 1.0, 4.0, 30.0, 180.0);
-    value("decay-rate", "decay rate of the probability between the barriers, fitted on t in [30, 180], grid dx 0.05 (theory: the width Gamma of the first resonance)", rate, res_g[0]);
+    value("decay-rate",
+          "decay rate of the probability between the barriers, fitted on t in [30, 180], grid dx "
+          "0.05 (theory: the width Gamma of the first resonance)",
+          rate, res_g[0]);
     value("decay-lifetime", "lifetime 1 / rate (theory hbar / Gamma)", 1.0 / rate, 1.0 / res_g[0]);
-    value("decay-early", "probability still between the barriers at t = 30 (the part of the box state that is not the resonance leaves first)", at30, 0.0);
+    value("decay-early",
+          "probability still between the barriers at t = 30 (the part of the box state that is not "
+          "the resonance leaves first)",
+          at30, 0.0);
     double k1 = sqrt(2.0 * res_e[0]), t1 = barrier_transmission(k1, 1.0, 1.0);
-    value("gamma-semiclassical", "the classical estimate hbar v T1 / (2 L): speed sqrt(2 E1) over the round trip 2 L = 8, times one barrier's T at E1 (theory: Gamma, to order of magnitude)", k1 * t1 / 8.0, res_g[0]);
+    value("gamma-semiclassical",
+          "the classical estimate hbar v T1 / (2 L): speed sqrt(2 E1) over the round trip 2 L = 8, "
+          "times one barrier's T at E1 (theory: Gamma, to order of magnitude)",
+          k1 * t1 / 8.0, res_g[0]);
     Series s[] = {{"ln P between the barriers", ya, "#1f77b4"}, {"slope -Gamma", yb, "#d62728"}};
-    plot("decay.svg", "Probability left between the barriers (log scale) against time", "t", "ln P", n, s, 2);
+    plot("decay.svg", "Probability left between the barriers (log scale) against time", "t", "ln P",
+         n, s, 2);
 }
 
 /* S24: simulated packets against the packet-averaged transfer matrices, and the limits. */
@@ -601,23 +850,41 @@ static void fig_packet_resonance(void)
     int n = 0;
     double worst = 0.0;
     for (double e = 0.06; e <= 0.78001; e += 0.04, n++) {
-        double k = sqrt(2.0 * e), sim = simulate_double_transmission(k, 10.0, 1.0, 1.0, 4.0), th = double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0);
+        double k = sqrt(2.0 * e), sim = simulate_double_transmission(k, 10.0, 1.0, 1.0, 4.0),
+               th = double_packet_transmission(k, 10.0, 1.0, 1.0, 4.0);
         xs[n] = (float)e;
         ya[n] = (float)sim;
         yb[n] = (float)th;
         yc[n] = (float)double_barrier_transmission(k, 1.0, 1.0, 4.0);
-        if (th > 0.01) worst = fmax(worst, fabs(sim / th - 1.0));
+        if (th > 0.01)
+            worst = fmax(worst, fabs(sim / th - 1.0));
     }
     double k1 = sqrt(2.0 * res_e[0]);
-    value("dpacket-worst", "largest relative gap between simulated packets (sigma 10) and the packet-averaged transfer matrices over 19 energies where T > 0.01", worst, 0.0);
-    value("dpacket-e1", "simulated packet sigma 10 sent at E1 (theory: the packet average, not 1)", simulate_double_transmission(k1, 10.0, 1.0, 1.0, 4.0), double_packet_transmission(k1, 10.0, 1.0, 1.0, 4.0));
-    value("dpacket-e1-20", "the packet average at E1 for sigma 20 (the browser's packet)", double_packet_transmission(k1, 20.0, 1.0, 1.0, 4.0), 0.0);
-    value("dpacket-e1-40", "the packet average at E1 for sigma 40", double_packet_transmission(k1, 40.0, 1.0, 1.0, 4.0), 0.0);
-    value("dpacket-spread", "energy spread k0 / (2 sigma) of the sigma 10 packet at E1, against the width Gamma", k1 / 20.0, res_g[0]);
+    value("dpacket-worst",
+          "largest relative gap between simulated packets (sigma 10) and the packet-averaged "
+          "transfer matrices over 19 energies where T > 0.01",
+          worst, 0.0);
+    value("dpacket-e1", "simulated packet sigma 10 sent at E1 (theory: the packet average, not 1)",
+          simulate_double_transmission(k1, 10.0, 1.0, 1.0, 4.0),
+          double_packet_transmission(k1, 10.0, 1.0, 1.0, 4.0));
+    value("dpacket-e1-20", "the packet average at E1 for sigma 20 (the browser's packet)",
+          double_packet_transmission(k1, 20.0, 1.0, 1.0, 4.0), 0.0);
+    value("dpacket-e1-40", "the packet average at E1 for sigma 40",
+          double_packet_transmission(k1, 40.0, 1.0, 1.0, 4.0), 0.0);
+    value("dpacket-spread",
+          "energy spread k0 / (2 sigma) of the sigma 10 packet at E1, against the width Gamma",
+          k1 / 20.0, res_g[0]);
     double grid = (1.0 - cos(k1 * 0.1)) / 0.01;
-    value("dpacket-grid", "energy of the wave k1 on the browser's grid (dx 0.1) against E1: the grid's shift of the resonance", grid, res_e[0]);
-    Series s[] = {{"simulated packet", ya, "#1f77b4"}, {"packet formula", yb, "#d62728"}, {"plane wave", yc, "#888888"}};
-    plot("packet-resonance.svg", "Packets (sigma 10) sent at two barriers: simulation against the packet formula", "energy E", "T", n, s, 3);
+    value("dpacket-grid",
+          "energy of the wave k1 on the browser's grid (dx 0.1) against E1: the grid's shift of "
+          "the resonance",
+          grid, res_e[0]);
+    Series s[] = {{"simulated packet", ya, "#1f77b4"},
+                  {"packet formula", yb, "#d62728"},
+                  {"plane wave", yc, "#888888"}};
+    plot("packet-resonance.svg",
+         "Packets (sigma 10) sent at two barriers: simulation against the packet formula",
+         "energy E", "T", n, s, 3);
 }
 
 /* S25: the browser's two-barrier experiment. */
@@ -637,32 +904,58 @@ static void fig_rs_adapter(void)
         n++;
         rs_step(60);
     }
-    value("rs-right", "browser experiment at E1: probability beyond the pair at the end (theory: the packet average for sigma 20)", rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
-    value("rs-time", "time at which that run stopped (the well had emptied below 1e-5 or the fast side neared the wall)", rs_value(RS_TIME), 0.0);
-    value("rs-well-peak", "largest probability held between the barriers during that run", peak, 0.0);
-    value("rs-norm", "largest departure of the norm from 1 during that run (theory 0)", worst_norm, 0.0);
-    Series s[] = {{"left of the pair", ya, "#1f77b4"}, {"beyond it", yb, "#d62728"}, {"between x 5", yc, "#2ca02c"}};
-    plot("rs-demo.svg", "The browser's packet at the first resonance: where the probability is", "t", "probability", n, s, 3);
+    value("rs-right",
+          "browser experiment at E1: probability beyond the pair at the end (theory: the packet "
+          "average for sigma 20)",
+          rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
+    value("rs-time",
+          "time at which that run stopped (the well had emptied below 1e-5 or the fast side neared "
+          "the wall)",
+          rs_value(RS_TIME), 0.0);
+    value("rs-well-peak", "largest probability held between the barriers during that run", peak,
+          0.0);
+    value("rs-norm", "largest departure of the norm from 1 during that run (theory 0)", worst_norm,
+          0.0);
+    Series s[] = {{"left of the pair", ya, "#1f77b4"},
+                  {"beyond it", yb, "#d62728"},
+                  {"between x 5", yc, "#2ca02c"}};
+    plot("rs-demo.svg", "The browser's packet at the first resonance: where the probability is",
+         "t", "probability", n, s, 3);
     rs_energy(0.40);
-    while (!rs_value(RS_DONE)) rs_step(400);
-    value("rs-off", "the same experiment at E = 0.40, between the resonances (theory: the packet average)", rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
+    while (!rs_value(RS_DONE))
+        rs_step(400);
+    value("rs-off",
+          "the same experiment at E = 0.40, between the resonances (theory: the packet average)",
+          rs_value(RS_P_RIGHT), rs_value(RS_T_PACKET));
     rs_reset(1);
     double sx = 0.0, sy = 0.0, sxx = 0.0, sxy = 0.0;
     int m = 0;
     while (!rs_value(RS_DONE)) {
         double t = rs_value(RS_TIME);
-        if (t >= 30.0 - 1e-9) { double y = log(rs_value(RS_P_WELL)); sx += t; sy += y; sxx += t * t; sxy += t * y; m++; }
+        if (t >= 30.0 - 1e-9) {
+            double y = log(rs_value(RS_P_WELL));
+            sx += t;
+            sy += y;
+            sxx += t * t;
+            sxy += t * y;
+            m++;
+        }
         rs_step(20);
     }
-    value("rs-release", "browser 'release from the well' run on its grid (dx 0.1): decay rate fitted on [30, 200] (theory Gamma)", -(m * sxy - sx * sy) / (m * sxx - sx * sx), rs_value(RS_G1));
+    value("rs-release",
+          "browser 'release from the well' run on its grid (dx 0.1): decay rate fitted on [30, "
+          "200] (theory Gamma)",
+          -(m * sxy - sx * sy) / (m * sxx - sx * sx), rs_value(RS_G1));
     rs_reset(0);
     rs_energy(9.0);
-    value("rs-clamp", "energy after asking for 9 (theory 0.75: clamped)", rs_value(RS_ENERGY), 0.75);
+    value("rs-clamp", "energy after asking for 9 (theory 0.75: clamped)", rs_value(RS_ENERGY),
+          0.75);
 }
 
 /* ---- Page 6: two dimensions and the double slit ---- */
 
-/* S26: every factor of the 2D step is a Cayley transform: the norm stays 1, for the browser's step and a huge one. */
+/* S26: every factor of the 2D step is a Cayley transform: the norm stays 1, for the browser's step
+ * and a huge one. */
 static void fig_norm2d(void)
 {
     Wave2 w;
@@ -674,22 +967,36 @@ static void fig_norm2d(void)
     for (int k = 0; k <= 400; k++) {
         double d = wave2_norm(&w) - 1.0;
         worst = fmax(worst, fabs(d));
-        if (k % 4 == 0) { xs[n] = (float)(k * 0.02); ya[n] = (float)(d * 1e13); n++; }
-        if (k < 400) wave2_step(&w);
+        if (k % 4 == 0) {
+            xs[n] = (float)(k * 0.02);
+            ya[n] = (float)(d * 1e13);
+            n++;
+        }
+        if (k < 400)
+            wave2_step(&w);
     }
-    value("w2-norm", "largest |norm - 1| over 400 steps of the 2D scheme through the slit wall (theory 0)", worst, 0.0);
+    value("w2-norm",
+          "largest |norm - 1| over 400 steps of the 2D scheme through the slit wall (theory 0)",
+          worst, 0.0);
     w.dt = 2.0;
-    for (int k = 0; k < 50; k++) wave2_step(&w);
-    value("w2-norm-big", "norm after 50 more steps of dt = 2, 100 times the browser's (theory 1: unitary for any step)", wave2_norm(&w), 1.0);
+    for (int k = 0; k < 50; k++)
+        wave2_step(&w);
+    value("w2-norm-big",
+          "norm after 50 more steps of dt = 2, 100 times the browser's (theory 1: unitary for any "
+          "step)",
+          wave2_norm(&w), 1.0);
     Series s[] = {{"norm - 1 (x 1e13)", ya, "#1f77b4"}};
-    plot("norm2d.svg", "2D alternating-direction Crank-Nicolson: total probability through the slits", "t", "departure x 1e13", n, s, 1);
+    plot("norm2d.svg",
+         "2D alternating-direction Crank-Nicolson: total probability through the slits", "t",
+         "departure x 1e13", n, s, 1);
     wave2_free(&w);
 }
 
 static double dist2(const Wave2 *a, const Wave2 *b)
 {
     double s = 0.0;
-    for (int k = 0; k < a->nx * a->ny; k++) s += pow(cabs(a->psi[k] - b->psi[k]), 2);
+    for (int k = 0; k < a->nx * a->ny; k++)
+        s += pow(cabs(a->psi[k] - b->psi[k]), 2);
     return sqrt(s) * a->dx;
 }
 
@@ -698,7 +1005,8 @@ static void order_run(Wave2 *w, double dt)
     must(wave2_init(w, 96, 97, -9.6, -9.6, 0.2, dt));
     wave2_gaussian(w, -3.0, 0.0, 1.5, 2.5, 2.5, 0.0);
     wave2_set_slits(w, 0.0, 0.8, 60.0, 4.4, 1.4, 3);
-    for (int k = 0; k < (int)lround(1.6 / dt); k++) wave2_step(w);
+    for (int k = 0; k < (int)lround(1.6 / dt); k++)
+        wave2_step(w);
 }
 
 /* S27: second order in dt once V dt is small. */
@@ -717,11 +1025,20 @@ static void fig_order2d(void)
         yb[i] = (float)(log10(errs[4]) + 2.0 * (log10(dts[i]) - log10(dts[4])));
     }
     wave2_free(&ref);
-    value("w2-order", "slope of log(error) against log(dt) between dt = 0.005 and 0.0025, slit wall V = 60, reference dt = 0.0003125 (theory 2)", log(errs[3] / errs[4]) / log(2.0), 2.0);
-    value("w2-order-coarse", "the same slope between dt = 0.04 and 0.02, where V dt = 2.4 is not small", log(errs[0] / errs[1]) / log(2.0), 2.0);
-    value("w2-error-browser-dt", "L2 distance from the reference at the browser's dt = 0.02 after t = 1.6 (a wave function of norm 1)", errs[1], 0.0);
+    value("w2-order",
+          "slope of log(error) against log(dt) between dt = 0.005 and 0.0025, slit wall V = 60, "
+          "reference dt = 0.0003125 (theory 2)",
+          log(errs[3] / errs[4]) / log(2.0), 2.0);
+    value("w2-order-coarse",
+          "the same slope between dt = 0.04 and 0.02, where V dt = 2.4 is not small",
+          log(errs[0] / errs[1]) / log(2.0), 2.0);
+    value("w2-error-browser-dt",
+          "L2 distance from the reference at the browser's dt = 0.02 after t = 1.6 (a wave "
+          "function of norm 1)",
+          errs[1], 0.0);
     Series s[] = {{"error", ya, "#1f77b4"}, {"slope 2 through the finest", yb, "#d62728"}};
-    plot("order2d.svg", "2D scheme: error against time step at t = 1.6 (log-log)", "log10 dt", "log10 of the L2 error", 5, s, 2);
+    plot("order2d.svg", "2D scheme: error against time step at t = 1.6 (log-log)", "log10 dt",
+         "log10 of the L2 error", 5, s, 2);
 }
 
 /* S28: a free 2D packet. */
@@ -734,22 +1051,46 @@ static void fig_spread2d(void)
     double x0 = wave2_mean(&w, 0), e0 = wave2_energy(&w), worst = 0.0;
     int n = 0;
     for (int s = 0; s <= 400; s++) {
-        double t = s * dt, th = sy * sqrt(1.0 + pow(t / (2.0 * sy * sy), 2.0)), m = sqrt(wave2_variance(&w, 1));
+        double t = s * dt, th = sy * sqrt(1.0 + pow(t / (2.0 * sy * sy), 2.0)),
+               m = sqrt(wave2_variance(&w, 1));
         worst = fmax(worst, fabs(m / th - 1.0));
-        if (s % 10 == 0) { xs[n] = (float)t; ya[n] = (float)m; yb[n] = (float)th; n++; }
-        if (s < 400) wave2_step(&w);
+        if (s % 10 == 0) {
+            xs[n] = (float)t;
+            ya[n] = (float)m;
+            yb[n] = (float)th;
+            n++;
+        }
+        if (s < 400)
+            wave2_step(&w);
     }
     double vg = sin(k * 0.2) / 0.2;
-    value("w2-width", "largest relative gap between the packet's width in y and sigma sqrt(1 + (t / 2 sigma^2)^2) over t in [0, 4] (theory 0)", worst, 0.0);
-    value("w2-centre", "distance the centre moved in t = 4 at k = 2 (theory: the grid's group velocity sin(k dx) / dx times t)", wave2_mean(&w, 0) - x0, vg * 4.0);
-    value("w2-energy", "relative change of the mean energy of the free packet over the run (theory 0: with V = 0 the factors commute)", fabs(wave2_energy(&w) / e0 - 1.0), 0.0);
+    value("w2-width",
+          "largest relative gap between the packet's width in y and sigma sqrt(1 + (t / 2 "
+          "sigma^2)^2) over t in [0, 4] (theory 0)",
+          worst, 0.0);
+    value("w2-centre",
+          "distance the centre moved in t = 4 at k = 2 (theory: the grid's group velocity sin(k "
+          "dx) / dx times t)",
+          wave2_mean(&w, 0) - x0, vg * 4.0);
+    value("w2-energy",
+          "relative change of the mean energy of the free packet over the run (theory 0: with V = "
+          "0 the factors commute)",
+          fabs(wave2_energy(&w) / e0 - 1.0), 0.0);
     Series s[] = {{"width in y (2D solver)", ya, "#1f77b4"}, {"continuum formula", yb, "#d62728"}};
-    plot("spread2d.svg", "A free 2D packet spreads across its motion as the 1D law says", "t", "standard deviation in y", n, s, 2);
+    plot("spread2d.svg", "A free 2D packet spreads across its motion as the 1D law says", "t",
+         "standard deviation in y", n, s, 2);
     wave2_free(&w);
 }
 
-static double screen_y(int m) { return -sl_value(SL_SCREEN_HALF) + (m + 0.5) * 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS; }
-static void sl_finish(void) { while (!sl_value(SL_DONE)) sl_step(50); }
+static double screen_y(int m)
+{
+    return -sl_value(SL_SCREEN_HALF) + (m + 0.5) * 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS;
+}
+static void sl_finish(void)
+{
+    while (!sl_value(SL_DONE))
+        sl_step(50);
+}
 static double saved_screen[SL_BINS];
 
 /* S29: the far field of the two slits against Fraunhofer. */
@@ -769,20 +1110,39 @@ static void fig_far(void)
         saved_screen[m] = sl_screen(m);
     }
     double y1 = sl_value(SL_SPACING_MEASURED), k = sl_value(SL_K), L = sl_value(SL_SCREEN_L);
-    value("sl-spacing", "first bright fringe on the screen at L = 100 (lambda 2.5, d 8.8, a 2.2) (theory L tan(asin(lambda / d)))", y1, sl_value(SL_SPACING));
-    value("sl-spacing-paraxial", "the same against the small-angle lambda L / d", y1, 2.5 * L / 8.8);
-    value("sl-dky", "that fringe as a transverse wavenumber k y / sqrt(y^2 + L^2) (theory 2 pi / d)", k * y1 / sqrt(y1 * y1 + L * L), sl_value(SL_DKY));
-    value("sl-visibility", "fringe visibility around the centre of the screen (theory 1 for two equal slits)", sl_value(SL_VISIBILITY), 1.0);
-    value("sl-l1", "L1 distance between the measured screen and Fraunhofer of the Gaussian-lit slits (each of area 1; 0 = equal, 2 = disjoint)", l1, 0.0);
+    value("sl-spacing",
+          "first bright fringe on the screen at L = 100 (lambda 2.5, d 8.8, a 2.2) (theory L "
+          "tan(asin(lambda / d)))",
+          y1, sl_value(SL_SPACING));
+    value("sl-spacing-paraxial", "the same against the small-angle lambda L / d", y1,
+          2.5 * L / 8.8);
+    value("sl-dky",
+          "that fringe as a transverse wavenumber k y / sqrt(y^2 + L^2) (theory 2 pi / d)",
+          k * y1 / sqrt(y1 * y1 + L * L), sl_value(SL_DKY));
+    value("sl-visibility",
+          "fringe visibility around the centre of the screen (theory 1 for two equal slits)",
+          sl_value(SL_VISIBILITY), 1.0);
+    value("sl-l1",
+          "L1 distance between the measured screen and Fraunhofer of the Gaussian-lit slits (each "
+          "of area 1; 0 = equal, 2 = disjoint)",
+          l1, 0.0);
     value("sl-l1-ideal", "the same against the textbook cos^2 sinc^2 for even light", l1i, 0.0);
-    value("sl-through", "probability that passed the slits (x >= 1.8) at the end of the run", sl_value(SL_P_BEYOND), 0.0);
-    value("sl-absorbed", "probability the absorbing layers took during the run (theory: small; the run stops before the waves reach them)", 1.0 - sl_value(SL_NORM), 0.0);
-    Series s[] = {{"2D solver", ya, "#1f77b4"}, {"Fraunhofer, Gaussian-lit", yb, "#d62728"}, {"textbook cos^2 sinc^2", yc, "#888888"}};
-    plot("slits-far.svg", "Two slits (lambda 2.5, d 8.8, a 2.2): intensity on a screen 100 away", "screen position y", "intensity (area 1)", SL_BINS, s, 3);
+    value("sl-through", "probability that passed the slits (x >= 1.8) at the end of the run",
+          sl_value(SL_P_BEYOND), 0.0);
+    value("sl-absorbed",
+          "probability the absorbing layers took during the run (theory: small; the run stops "
+          "before the waves reach them)",
+          1.0 - sl_value(SL_NORM), 0.0);
+    Series s[] = {{"2D solver", ya, "#1f77b4"},
+                  {"Fraunhofer, Gaussian-lit", yb, "#d62728"},
+                  {"textbook cos^2 sinc^2", yc, "#888888"}};
+    plot("slits-far.svg", "Two slits (lambda 2.5, d 8.8, a 2.2): intensity on a screen 100 away",
+         "screen position y", "intensity (area 1)", SL_BINS, s, 3);
 }
 
 /* S30: one slit, the missing order and the field in the hole. Direct runs on the browser's geometry
- * (src/slits.c: 256 x 256, dx 0.2, dt 0.02, wall 0.8 thick of V = 60, packet sigma 3 x 6 from x = -12). */
+ * (src/slits.c: 256 x 256, dx 0.2, dt 0.02, wall 0.8 thick of V = 60, packet sigma 3 x 6 from x =
+ * -12). */
 static void slit_run(Wave2 *w, double lambda, double sep, double width, int open, double thickness)
 {
     double k = 2.0 * PI / lambda;
@@ -791,14 +1151,17 @@ static void slit_run(Wave2 *w, double lambda, double sep, double width, int open
     wave2_gaussian(w, -12.0, 0.0, 3.0, 6.0, k, 0.0);
     wave2_set_slits(w, 0.0, thickness, 60.0, sep, width, open);
     int steps = (int)ceil(21.0 / (sin(k * 0.2) / 0.2) / 0.02);
-    for (int s = 0; s < steps; s++) wave2_step(w);
+    for (int s = 0; s < steps; s++)
+        wave2_step(w);
 }
 
 static void fig_one_slit(void)
 {
     enum { M = 241 };
-    double lambda = 2.0, sep = 6.0, width = 3.0, k = 2.0 * PI / lambda, ky[M], one[M], two[M], th1[M], th2[M];
-    for (int m = 0; m < M; m++) ky[m] = -k + 2.0 * k * m / (M - 1);
+    double lambda = 2.0, sep = 6.0, width = 3.0, k = 2.0 * PI / lambda, ky[M], one[M], two[M],
+           th1[M], th2[M];
+    for (int m = 0; m < M; m++)
+        ky[m] = -k + 2.0 * k * m / (M - 1);
     Wave2 w;
     slit_run(&w, lambda, sep, width, 3, 0.8);
     wave2_ky_spectrum(&w, 1.8, M, ky, two);
@@ -810,36 +1173,62 @@ static void fig_one_slit(void)
     for (int m = 0; m < M; m++) {
         th1[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 1);
         th2[m] = slit_fraunhofer(ky[m], sep, width, 6.0, 3);
-        s1 += one[m]; s2 += two[m]; t1 += th1[m]; t2 += th2[m];
+        s1 += one[m];
+        s2 += two[m];
+        t1 += th1[m];
+        t2 += th2[m];
         mean += ky[m] * one[m];
     }
-    int centre = M / 2, order2 = (int)lround((2.0 * (2.0 * PI / sep) + k) / (2.0 * k) * (M - 1)), order1 = (int)lround((2.0 * PI / sep + k) / (2.0 * k) * (M - 1));
+    int centre = M / 2, order2 = (int)lround((2.0 * (2.0 * PI / sep) + k) / (2.0 * k) * (M - 1)),
+        order1 = (int)lround((2.0 * PI / sep + k) / (2.0 * k) * (M - 1));
     for (int m = 0; m < M; m++) {
         xs[m] = (float)ky[m];
         ya[m] = (float)(two[m] / s2);
         yb[m] = (float)(th2[m] / t2);
         yc[m] = (float)(2.0 * one[m] / s1 * (th2[centre] / t2) / (2.0 * th1[centre] / t1));
     }
-    value("missing-order", "two slits d = 6, a = 3, lambda 2: intensity at ky = 2 (2 pi / d), the second order, over the central maximum (theory 0: d / a = 2)", two[order2] / two[centre], 0.0);
-    value("first-order", "the same at the first order ky = 2 pi / d (theory: the envelope there, sinc^2(pi a / d))", two[order1] / two[centre], th2[order1] / th2[centre]);
-    value("envelope-zero", "one slit a = 3: intensity at ky = 2 pi / a over its maximum (theory 0)", one[order2] / one[centre], 0.0);
+    value("missing-order",
+          "two slits d = 6, a = 3, lambda 2: intensity at ky = 2 (2 pi / d), the second order, "
+          "over the central maximum (theory 0: d / a = 2)",
+          two[order2] / two[centre], 0.0);
+    value(
+        "first-order",
+        "the same at the first order ky = 2 pi / d (theory: the envelope there, sinc^2(pi a / d))",
+        two[order1] / two[centre], th2[order1] / th2[centre]);
+    value("envelope-zero", "one slit a = 3: intensity at ky = 2 pi / a over its maximum (theory 0)",
+          one[order2] / one[centre], 0.0);
     double kq[2] = {0.0, 2.0 * (2.0 * PI / sep)}, thin[2];
     slit_run(&w, lambda, sep, width, 3, 0.2);
     wave2_ky_spectrum(&w, 1.2, 2, kq, thin);
     wave2_free(&w);
-    value("missing-order-thin", "the same second order behind a wall 0.2 thick, one grid cell (theory 0)", thin[1] / thin[0], 0.0);
+    value("missing-order-thin",
+          "the same second order behind a wall 0.2 thick, one grid cell (theory 0)",
+          thin[1] / thin[0], 0.0);
     slit_run(&w, lambda, sep, width, 0, 0.2);
-    value("thin-leak", "probability that tunnels through that 0.2 wall with both slits closed (theory: small but not 0)", wave2_prob_beyond(&w, 1.2), 0.0);
+    value("thin-leak",
+          "probability that tunnels through that 0.2 wall with both slits closed (theory: small "
+          "but not 0)",
+          wave2_prob_beyond(&w, 1.2), 0.0);
     wave2_free(&w);
     slit_run(&w, lambda, sep, width, 0, 0.8);
-    value("thick-leak", "the same through the browser's 0.8 wall (theory: about exp(-2 kappa 0.8))", wave2_prob_beyond(&w, 1.8), 0.0);
+    value("thick-leak", "the same through the browser's 0.8 wall (theory: about exp(-2 kappa 0.8))",
+          wave2_prob_beyond(&w, 1.8), 0.0);
     wave2_free(&w);
-    value("kirchhoff-lean", "mean ky of the light from the upper slit alone, in units of k (Fraunhofer of a real aperture: 0)", mean / s1 / k, 0.0);
-    Series s[] = {{"two slits (2D solver)", ya, "#1f77b4"}, {"two slits (Fraunhofer)", yb, "#d62728"}, {"one slit, scaled (2D solver)", yc, "#2ca02c"}};
-    plot("slits-one.svg", "Two slits d = 6, a = 3 (lambda 2): the second order falls on a zero of the one-slit envelope", "transverse wavenumber ky", "intensity (area 1)", M, s, 3);
+    value("kirchhoff-lean",
+          "mean ky of the light from the upper slit alone, in units of k (Fraunhofer of a real "
+          "aperture: 0)",
+          mean / s1 / k, 0.0);
+    Series s[] = {{"two slits (2D solver)", ya, "#1f77b4"},
+                  {"two slits (Fraunhofer)", yb, "#d62728"},
+                  {"one slit, scaled (2D solver)", yc, "#2ca02c"}};
+    plot("slits-one.svg",
+         "Two slits d = 6, a = 3 (lambda 2): the second order falls on a zero of the one-slit "
+         "envelope",
+         "transverse wavenumber ky", "intensity (area 1)", M, s, 3);
 }
 
-/* S32: Born's rule, one particle at a time (the browser's counter draw). Run after fig_far (mode 0, done). */
+/* S32: Born's rule, one particle at a time (the browser's counter draw). Run after fig_far (mode 0,
+ * done). */
 static void fig_born(void)
 {
     enum { COARSE = 50 };
@@ -850,7 +1239,8 @@ static void fig_born(void)
     sl_seed(1);
     for (int c = 0; c < COARSE; c++) {
         double p = 0.0;
-        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++) p += sl_screen(m) * 2.0 * half / SL_BINS;
+        for (int m = c * (SL_BINS / COARSE); m < (c + 1) * (SL_BINS / COARSE); m++)
+            p += sl_screen(m) * 2.0 * half / SL_BINS;
         exact[c] = (float)(p / width);
         xs[c] = (float)(-half + (c + 0.5) * width);
     }
@@ -858,7 +1248,8 @@ static void fig_born(void)
         double hist[COARSE] = {0};
         for (int n = 0; n < counts[r]; n++) {
             int c = (int)floor((sl_particle(n) + half) / width);
-            if (c >= 0 && c < COARSE) hist[c]++;
+            if (c >= 0 && c < COARSE)
+                hist[c]++;
         }
         for (int c = 0; c < COARSE; c++) {
             out[r][c] = (float)(hist[c] / counts[r] / width);
@@ -868,20 +1259,36 @@ static void fig_born(void)
             }
         }
     }
-    value("born-sd", "20,000 particles in 50 bins: largest deviation from the measured intensity, in binomial standard deviations (theory: about 2.5 for 50 bins)", worst, 0.0);
+    value("born-sd",
+          "20,000 particles in 50 bins: largest deviation from the measured intensity, in binomial "
+          "standard deviations (theory: about 2.5 for 50 bins)",
+          worst, 0.0);
     double first = sl_particle(7);
     sl_seed(2);
-    value("born-seed", "particle 7 with another seed minus particle 7 with seed 1 (a different draw: not 0)", sl_particle(7) - first, 0.0);
+    value("born-seed",
+          "particle 7 with another seed minus particle 7 with seed 1 (a different draw: not 0)",
+          sl_particle(7) - first, 0.0);
     sl_seed(1);
-    value("born-repeat", "particle 7 drawn again with seed 1 minus the first draw (theory 0: a pure function of seed and number)", sl_particle(7) - first, 0.0);
-    for (int c = 0; c < COARSE; c++) ya[c] = out[0][c], yb[c] = out[1][c], yc[c] = out[2][c];
+    value("born-repeat",
+          "particle 7 drawn again with seed 1 minus the first draw (theory 0: a pure function of "
+          "seed and number)",
+          sl_particle(7) - first, 0.0);
+    for (int c = 0; c < COARSE; c++)
+        ya[c] = out[0][c], yb[c] = out[1][c], yc[c] = out[2][c];
     static float ex[COARSE];
-    for (int c = 0; c < COARSE; c++) ex[c] = exact[c];
-    Series s[] = {{"200 particles", ya, "#bbbbbb"}, {"2,000 particles", yb, "#2ca02c"}, {"20,000 particles", yc, "#1f77b4"}, {"measured intensity", ex, "#d62728"}};
-    plot("born.svg", "Particles one at a time: histograms against the intensity they are drawn from", "screen position y", "particles per unit y / N", COARSE, s, 4);
+    for (int c = 0; c < COARSE; c++)
+        ex[c] = exact[c];
+    Series s[] = {{"200 particles", ya, "#bbbbbb"},
+                  {"2,000 particles", yb, "#2ca02c"},
+                  {"20,000 particles", yc, "#1f77b4"},
+                  {"measured intensity", ex, "#d62728"}};
+    plot("born.svg",
+         "Particles one at a time: histograms against the intensity they are drawn from",
+         "screen position y", "particles per unit y / N", COARSE, s, 4);
 }
 
-/* S31: which path. Mode 3 runs the two one-slit waves; a random phase on slit B multiplies the cross term. */
+/* S31: which path. Mode 3 runs the two one-slit waves; a random phase on slit B multiplies the
+ * cross term. */
 static void fig_coherence(void)
 {
     sl_reset(3);
@@ -889,8 +1296,12 @@ static void fig_coherence(void)
     double h = 2.0 * sl_value(SL_SCREEN_HALF) / SL_BINS, worst = 0.0;
     sl_scramble(0.0);
     double sup = 0.0;
-    for (int m = 0; m < SL_BINS; m++) sup += fabs(sl_screen(m) - saved_screen[m]) * h;
-    value("superposition", "L1 distance between the sum of the two one-slit waves and the two-slit run (theory 0 if the wall only cuts the light)", sup, 0.0);
+    for (int m = 0; m < SL_BINS; m++)
+        sup += fabs(sl_screen(m) - saved_screen[m]) * h;
+    value("superposition",
+          "L1 distance between the sum of the two one-slit waves and the two-slit run (theory 0 if "
+          "the wall only cuts the light)",
+          sup, 0.0);
     int n = 0;
     for (int i = 0; i <= 20; i++) {
         double phi = PI * i / 20.0;
@@ -903,13 +1314,25 @@ static void fig_coherence(void)
         n++;
     }
     sl_scramble(PI);
-    value("which-path", "central visibility when the phase on slit B is uniform on [-pi, pi] (theory: the one-slit envelope alone)", sl_value(SL_VISIBILITY), sl_value(SL_VISIBILITY_THEORY));
+    value("which-path",
+          "central visibility when the phase on slit B is uniform on [-pi, pi] (theory: the "
+          "one-slit envelope alone)",
+          sl_value(SL_VISIBILITY), sl_value(SL_VISIBILITY_THEORY));
     sl_scramble(PI / 2.0);
-    value("coherence-half", "coherence <e^{i phi}> for phi uniform on [-pi/2, pi/2] (theory sin(pi/2) / (pi/2))", sl_value(SL_COHERENCE), 2.0 / PI);
-    value("visibility-gap", "largest gap between the measured visibility and Fraunhofer's over 21 phase spreads (theory 0)", worst, 0.0);
+    value("coherence-half",
+          "coherence <e^{i phi}> for phi uniform on [-pi/2, pi/2] (theory sin(pi/2) / (pi/2))",
+          sl_value(SL_COHERENCE), 2.0 / PI);
+    value("visibility-gap",
+          "largest gap between the measured visibility and Fraunhofer's over 21 phase spreads "
+          "(theory 0)",
+          worst, 0.0);
     sl_scramble(PI);
-    Series s[] = {{"visibility, 2D solver", ya, "#1f77b4"}, {"visibility, Fraunhofer", yb, "#d62728"}, {"coherence sin(phi) / phi", yc, "#888888"}};
-    plot("coherence.svg", "Watching which slit: fringe visibility against the spread of the random phase", "phase spread phi", "visibility", n, s, 3);
+    Series s[] = {{"visibility, 2D solver", ya, "#1f77b4"},
+                  {"visibility, Fraunhofer", yb, "#d62728"},
+                  {"coherence sin(phi) / phi", yc, "#888888"}};
+    plot("coherence.svg",
+         "Watching which slit: fringe visibility against the spread of the random phase",
+         "phase spread phi", "visibility", n, s, 3);
 }
 
 /* S33: the hard walls reflect; the absorbing layers remove what reaches them. */
@@ -932,16 +1355,29 @@ static void fig_absorber(void)
                         pa += creal(a.psi[j * 128 + i] * conj(a.psi[j * 128 + i]));
                         pb += creal(b.psi[j * 128 + i] * conj(b.psi[j * 128 + i]));
                     }
-            pa *= 0.04; pb *= 0.04;
-            xs[n] = (float)(s * 0.02); ya[n] = (float)pa; yb[n] = (float)pb; n++;
+            pa *= 0.04;
+            pb *= 0.04;
+            xs[n] = (float)(s * 0.02);
+            ya[n] = (float)pa;
+            yb[n] = (float)pb;
+            n++;
         }
-        if (s < 1000) { wave2_step(&a); wave2_step(&b); }
+        if (s < 1000) {
+            wave2_step(&a);
+            wave2_step(&b);
+        }
     }
-    value("absorb-hard", "probability back in the central 12 x 12 at t = 20 with hard walls (it bounced back)", pa, 0.0);
-    value("absorb-layer", "the same with absorbing layers 4 thick (theory: small; what reached the edge is gone)", pb, 0.0);
+    value("absorb-hard",
+          "probability back in the central 12 x 12 at t = 20 with hard walls (it bounced back)", pa,
+          0.0);
+    value("absorb-layer",
+          "the same with absorbing layers 4 thick (theory: small; what reached the edge is gone)",
+          pb, 0.0);
     value("absorb-norm", "total probability left with the layers at t = 20", wave2_norm(&b), 0.0);
     Series s[] = {{"hard walls", ya, "#d62728"}, {"absorbing layers", yb, "#1f77b4"}};
-    plot("absorber.svg", "A packet sent at the corner of a 25.6 x 25.6 box: probability in the centre", "t", "probability in |x|, |y| < 6", n, s, 2);
+    plot("absorber.svg",
+         "A packet sent at the corner of a 25.6 x 25.6 box: probability in the centre", "t",
+         "probability in |x|, |y| < 6", n, s, 2);
     wave2_free(&a);
     wave2_free(&b);
 }
@@ -958,28 +1394,42 @@ static void fig_sl_adapter(void)
         ya[n] = (float)sl_value(SL_P_BEYOND);
         yb[n] = (float)(1.0 - sl_value(SL_NORM));
         n++;
-        if (sl_value(SL_DONE)) break;
+        if (sl_value(SL_DONE))
+            break;
         sl_step(5);
     }
     (void)worst;
-    value("sl-steps", "steps of the default run (lambda 2.5): until a free packet's centre would be at x = 9 (theory ceil(21 / v_g / dt))", sl_value(SL_STEPS),
-          ceil(21.0 / (sin(2.0 * PI / 2.5 * 0.2) / 0.2) / 0.02));
+    value("sl-steps",
+          "steps of the default run (lambda 2.5): until a free packet's centre would be at x = 9 "
+          "(theory ceil(21 / v_g / dt))",
+          sl_value(SL_STEPS), ceil(21.0 / (sin(2.0 * PI / 2.5 * 0.2) / 0.2) / 0.02));
     sl_controls(9.0, 1.0, 9.0);
-    value("sl-clamp-lambda", "wavelength after asking for 9 (theory 4: clamped)", sl_value(SL_LAMBDA), 4.0);
-    value("sl-clamp-width", "slit width after asking for 9 with the separation clamped to 4 (theory 3.0: at least 1 of wall between)", sl_value(SL_WIDTH), 3.0);
+    value("sl-clamp-lambda", "wavelength after asking for 9 (theory 4: clamped)",
+          sl_value(SL_LAMBDA), 4.0);
+    value("sl-clamp-width",
+          "slit width after asking for 9 with the separation clamped to 4 (theory 3.0: at least 1 "
+          "of wall between)",
+          sl_value(SL_WIDTH), 3.0);
     sl_controls(2.5, 8.8, 2.2);
     Series s[] = {{"passed the slits", ya, "#1f77b4"}, {"taken by the absorbers", yb, "#d62728"}};
-    plot("sl-demo.svg", "The browser's default double-slit run: probability beyond the wall", "t", "probability", n, s, 2);
+    plot("sl-demo.svg", "The browser's default double-slit run: probability beyond the wall", "t",
+         "probability", n, s, 2);
 }
 
 int main(int argc, char **argv)
 {
     snprintf(dir, sizeof dir, "%s", argc > 1 ? argv[1] : "docs/theory/figures");
     values = fopen(path("values.md"), "w");
-    if (!values) { fprintf(stderr, "cannot write %s/values.md\n", dir); return 1; }
-    fprintf(values, "# Measured values\n\nWritten by `make theory-figs` (tests/theory_figs.c) from the program's own functions. Do not edit by hand.\n"
-                    "Units: hbar = m = 1. The last column is the relative error; where the theory column is 0 it is the absolute value.\n\n"
-                    "| id | what is measured | measured | theory | error |\n|---|---|---|---|---|\n");
+    if (!values) {
+        fprintf(stderr, "cannot write %s/values.md\n", dir);
+        return 1;
+    }
+    fprintf(values,
+            "# Measured values\n\nWritten by `make theory-figs` (tests/theory_figs.c) from the "
+            "program's own functions. Do not edit by hand.\n"
+            "Units: hbar = m = 1. The last column is the relative error; where the theory column "
+            "is 0 it is the absolute value.\n\n"
+            "| id | what is measured | measured | theory | error |\n|---|---|---|---|---|\n");
     fig_conservation();
     fig_packet();
     fig_dispersion();
