@@ -13,3 +13,6 @@ story_bench
 .story-check/
 test_resonance
 test_slits
+test-results/
+.tm-ctest/
+.tm-home/
