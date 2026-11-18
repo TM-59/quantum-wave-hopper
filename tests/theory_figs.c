@@ -1158,6 +1158,9 @@ static void fig_order2d(void)
         wave2_free(&w);
         xs[i] = (float)log10(dts[i]);
         ya[i] = (float)log10(errs[i]);
+    }
+    /* The guide line goes through the finest error, so it is drawn after errs[4] exists. */
+    for (int i = 0; i < 5; i++) {
         yb[i] = (float)(log10(errs[4]) + 2.0 * (log10(dts[i]) - log10(dts[4])));
     }
     wave2_free(&ref);
