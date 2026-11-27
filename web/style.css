@@ -730,6 +730,21 @@ footer > span:last-child {
   align-items: center;
   gap: 16px;
 }
+/* Music on/off: 44 px, in the top bar so it never takes a tap meant for the shots. */
+#mute {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 50%;
+  flex: none;
+}
+#mute[aria-pressed="true"] {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
 #lang {
   min-height: 44px;
   font-size: 12px;

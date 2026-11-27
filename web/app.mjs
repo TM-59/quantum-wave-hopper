@@ -1,3 +1,4 @@
+import { BgmPlayer, cue } from './bgm.mjs';
 import createWave from './physics.mjs';
 import { startResonance } from './resonance.mjs';
 import { startSlits } from './slits.mjs';
@@ -823,8 +824,57 @@ function frame(timestamp) {
       render();
     }
   }
+  musicFrame();
   requestAnimationFrame(frame);
 }
+// ------------------------------------------------------------------ music (docs/bgm.md)
+// The ballad on the observatory, the double barrier and the double slit, a pulse track through a
+// night of The Far Side, quiet music under a scene and its own track at dawn. Nothing loads before
+// the first press. M or the ♪ button toggles the music; mute also cuts the output.
+const music = new BgmPlayer();
+const muteButton = $('mute');
+let muted = false;
+/** @param {boolean} value */
+function setMuted(value) {
+  muted = value;
+  muteButton.setAttribute('aria-pressed', String(muted));
+  muteButton.setAttribute('aria-label', muted ? 'Play music' : 'Mute music');
+  muteButton.title = muted ? 'Music off · M plays' : 'Music on · M mutes';
+}
+muteButton.onclick = () => setMuted(!muted);
+window.addEventListener('pointerdown', () => music.unlock(), true);
+window.addEventListener(
+  'keydown',
+  (event) => {
+    music.unlock();
+    if (
+      event.key.toLowerCase() === 'm' &&
+      !event.repeat &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      !(event.target instanceof Element && event.target.matches('input,textarea,select'))
+    )
+      setMuted(!muted);
+  },
+  true,
+);
+const musicCue = () => {
+  const s = engine && story && fs.scene >= 0 ? SCENES[fs.scene] : null;
+  return cue({
+    story,
+    scene: s ? s.id : null,
+    heavy: Boolean(s?.heavy),
+    ending: Boolean(s?.endings),
+    over: Boolean(engine && story && fs.night >= 5),
+  });
+};
+function musicFrame() {
+  music.set(musicCue(), muted);
+}
+Object.defineProperty(window, 'musicView', {
+  get: () => ({ cue: musicCue(), ...music.state() }),
+});
 // Read-only hook for the phone playability check: canvas text sizes in CSS px, the first goal, the next tap.
 const fromScene = (/** @type {Element} */ el) => {
   const c = scene.getBoundingClientRect(),

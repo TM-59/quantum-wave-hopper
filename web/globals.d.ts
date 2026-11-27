@@ -10,5 +10,22 @@ declare global {
     rsView: ReturnType<typeof startResonance>;
     slView: ReturnType<typeof startSlits>;
     __tmGate: Gate;
+    /** The music player (web/bgm.mjs) for scripts/bgm-smoke.cjs. */
+    readonly musicView?: BgmView;
+  }
+  /** What the music player asks for and what it plays (web/bgm.mjs). */
+  interface BgmView {
+    cue: { track: string; gain: number };
+    want: string | null;
+    playing: string;
+    gain: number;
+    muted: boolean;
+    unlocked: boolean;
+    running: boolean;
+    fetched: string[];
+    loaded: string[];
+    failed: string[];
+    /** Output RMS in dBFS. */
+    level: number;
   }
 }
