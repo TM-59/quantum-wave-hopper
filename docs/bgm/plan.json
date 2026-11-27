@@ -1,0 +1,75 @@
+{
+ "note": "BGM の生成計画(quantum-wave-hopper M63 #29、親 project-context#598)。caption は音の特徴だけ(曲名・作者・作品名を書かない。musical-notation-translator の docs/copyright-policy.md)。どの場面も文字か計器を読むので全部器楽。soft の曲のループは bars × 4 × 60 / bpm ≥ 16 秒(lab 30.0・story 25.7・dawn 23.2 秒)。候補は Colab の GPU で作る(local-llm-ops #260、python -m tools.colab bgm)、落ちる先は scripts/bgm_gen.py(手元の CPU)。scripts/bgm_bake.py が門・ループの切り出し・書き出し(web/bgm/)。",
+ "engine": "ACE-Step/Ace-Step1.5:acestep-v15-turbo",
+ "steps": 8,
+ "note_loop": "ループは生成の長さより十分短く取り、継ぎ目の始点を探す余地を残す。soft の曲は継ぎ目を 2 秒重ね、長さを 1 小節ずつ縮めて 16 秒以上で継ぎ目の音色の跳びが最小の物を採る。pulse は 0.12 秒(拍がずれない)。",
+ "seeds": [
+  951,
+  952,
+  953,
+  954,
+  955,
+  956
+ ],
+ "note_seeds": "seed は 1 場面 6 本。pulse の場面は caption 3 つ(頭から拍が続く指示。gravity-well #35 で前半が薄い候補が出た学び)。他の作品と同じ caption・seed を使わない(既存の plan.json の seed 11〜946 と別の 951〜956)。",
+ "scenes": {
+  "lab": {
+   "role": "基調(1 次元の観測所・二重障壁・二重スリット)",
+   "loop": true,
+   "bpm": 64,
+   "key": "A major",
+   "seconds": 44,
+   "bars": 8,
+   "mood": "soft",
+   "xf": 2.0,
+   "captions": [
+    "slow curious ballad, soft music box and grand piano melody, gentle rippling marimba, warm string pad, waves spreading through a quiet observatory, wondering and calm, no drums, instrumental",
+    "tender night ballad, mellow flugelhorn melody over soft electric piano chords and slow harp, light passing through two narrow slits, serene, no percussion, instrumental"
+   ]
+  },
+  "night": {
+   "role": "戦闘の役(向こう側 の夜。ダイヤルを合わせて粒子を撃ち、電池と時間で向こう側を探す間)",
+   "loop": true,
+   "bpm": 110,
+   "key": "E minor",
+   "seconds": 44,
+   "bars": 16,
+   "mood": "pulse",
+   "captions": [
+    "driving night experiment track, steady kick drum on every beat from the first bar, pulsing arpeggiated synth bass, fast plucked string ostinato, bright brass accents, firing particles at a barrier before the battery runs out, tense, no intro, instrumental",
+    "propulsive laboratory music, tight snare and kick on every beat throughout, rolling toms, staccato low strings, rising synth lead, counting hits on the far side of the wall, determined, constant energy from start to end, instrumental",
+    "relentless tunnelling track, full drum kit from the very first bar, driving eighth-note bass, urgent strings and low brass stabs all the way through, no quiet sections, no breakdown, instrumental"
+   ],
+   "pick": "night-c1-s955"
+  },
+  "story": {
+   "role": "物語(向こう側 の場面。重い場面 letter・fall・dark は 0.4 倍)",
+   "loop": true,
+   "bpm": 56,
+   "key": "A major",
+   "seconds": 40,
+   "bars": 6,
+   "mood": "soft",
+   "xf": 2.0,
+   "captions": [
+    "sparse observatory underscore, soft felt piano notes and a distant celesta, low sustained synth drone, long rests, a radio voice in a cold night, quiet and tender, no drums, instrumental",
+    "minimal hushed score, slow bowed cello drone with single kalimba notes, wide near silence, reading an old letter under a lamp, no percussion, instrumental"
+   ]
+  },
+  "dawn": {
+   "role": "結末(dawn の場面)",
+   "loop": true,
+   "bpm": 62,
+   "key": "D major",
+   "seconds": 40,
+   "bars": 6,
+   "mood": "soft",
+   "xf": 2.0,
+   "captions": [
+    "gentle dawn ballad, warm piano and solo violin melody, slow swelling strings, first light over the observatory after a long night, relieved and bittersweet, no drums, instrumental",
+    "slow closing ballad, soft fingerpicked guitar and string quartet with a quiet clarinet, morning after the last measurement, tender and calm, no percussion, instrumental"
+   ]
+  }
+ },
+ "note_pick": "pick は門を通った候補の中から波形を見て選ぶ時だけ書く(門は変えない。scripts/bgm_bake.py は pick が門を落ちていれば点数で選ぶ)。night: 点数で選ばれた night-c1-s952 は 1 周 35 秒の頭の約 3.5 秒に拍が無い(落ち込み 1.5 秒・静かな窓 0.058 で門は通る)。戦闘の役はすぐ分かる必要があるので、頭から終わりまで拍が続く night-c1-s955(拍の強さ 0.773・落ち込み 0・継ぎ目の音色 1.1)を採る。"
+}

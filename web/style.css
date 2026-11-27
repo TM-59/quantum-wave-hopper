@@ -730,6 +730,21 @@ footer > span:last-child {
   align-items: center;
   gap: 16px;
 }
+/* Music on/off: 44 px, in the top bar so it never takes a tap meant for the shots. */
+#mute {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  font-size: 20px;
+  line-height: 1;
+  border-radius: 50%;
+  flex: none;
+}
+#mute[aria-pressed="true"] {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
 #lang {
   min-height: 44px;
   font-size: 12px;
@@ -1110,5 +1125,17 @@ body[data-mode="story"] #chart-key {
     font-size: 14px;
     line-height: 1.7;
     letter-spacing: 0.3px;
+  }
+}
+/* Phones: the ♪ button shares the top bar, so the decorative arrow of "How it works" goes and the gaps narrow. */
+@media (max-width: 720px) {
+  .about-link span {
+    display: none;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  #lang {
+    padding: 6px 5px;
   }
 }

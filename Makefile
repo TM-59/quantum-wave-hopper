@@ -71,7 +71,9 @@ bench: test_observer test_resonance test_slits
 	./test_slits --trace > build/slits-trace.csv
 
 web: dist/physics.mjs
-	cp web/index.html web/style.css web/app.mjs web/story.mjs web/resonance.mjs web/slits.mjs dist/
+	cp web/index.html web/style.css web/app.mjs web/story.mjs web/resonance.mjs web/slits.mjs web/bgm.mjs dist/
+	mkdir -p dist/bgm
+	cp web/bgm/* dist/bgm/
 	mkdir -p dist/art
 	cp assets/art/* dist/art/
 	$(PYTHON) scripts/check_size.py

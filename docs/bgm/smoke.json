@@ -1,0 +1,69 @@
+{
+ "checks": [
+  {
+   "what": "nothing fetched before the first press",
+   "fetched": 0
+  },
+  {
+   "what": "lab plays",
+   "cue": {
+    "track": "lab",
+    "gain": 1
+   },
+   "level": -25.3,
+   "gain": 0.45
+  },
+  {
+   "what": "story plays",
+   "cue": {
+    "track": "story",
+    "gain": 0.7
+   },
+   "level": -28.2,
+   "gain": 0.315
+  },
+  {
+   "what": "mute during a crossfade silences the fading track too",
+   "level": -120
+  },
+  {
+   "what": "night plays",
+   "cue": {
+    "track": "night",
+    "gain": 1
+   },
+   "level": -16.5,
+   "gain": 0.45
+  },
+  {
+   "what": "♪ mutes and restores",
+   "size": {
+    "x": 1188,
+    "y": -411.5,
+    "width": 44,
+    "height": 44
+   },
+   "level": [
+    -120,
+    -25.7
+   ]
+  },
+  {
+   "what": "cues: heavy scenes story 0.4x, dawn and after it dawn, the experiments lab"
+  },
+  {
+   "what": "dist bytes",
+   "bytes": 2443227
+  }
+ ],
+ "fetched": [
+  "list.json",
+  "lab.ogg",
+  "night.ogg",
+  "story.ogg",
+  "dawn.ogg"
+ ],
+ "ok": true,
+ "seconds": 20.6,
+ "when": "2026-11-27T01:08:32.335Z"
+}
