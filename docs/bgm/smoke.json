@@ -32,7 +32,7 @@
     "track": "night",
     "gain": 1
    },
-   "level": -17.1,
+   "level": -16.5,
    "gain": 0.45
   },
   {
@@ -53,7 +53,7 @@
   },
   {
    "what": "dist bytes",
-   "bytes": 2442965
+   "bytes": 2443227
   }
  ],
  "fetched": [
@@ -64,6 +64,6 @@
   "dawn.ogg"
  ],
  "ok": true,
- "seconds": 20.5,
- "when": "2026-11-27T00:46:44.142Z"
+ "seconds": 20.6,
+ "when": "2026-11-27T01:08:32.335Z"
 }
