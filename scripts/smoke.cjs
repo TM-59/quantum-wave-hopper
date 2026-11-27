@@ -666,7 +666,10 @@ async function run() {
   }
   for (const sel of ['a.brand', 'a.about-link']) {
     const box = await mobile.locator(sel).boundingBox();
-    check(box && box.width >= 44 && box.height >= 44, `390x844: ${sel} is ${box?.width}x${box?.height}px`);
+    check(
+      box && box.width >= 44 && box.height >= 44,
+      `390x844: ${sel} is ${box?.width}x${box?.height}px`,
+    );
   }
   // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
   const sizes = () => {
@@ -759,7 +762,10 @@ async function run() {
   }
   for (const sel of ['a.brand', 'a.about-link']) {
     const box = await mobile.locator(sel).boundingBox();
-    check(box && box.width >= 44 && box.height >= 44, `844x390: ${sel} is ${box?.width}x${box?.height}px`);
+    check(
+      box && box.width >= 44 && box.height >= 44,
+      `844x390: ${sel} is ${box?.width}x${box?.height}px`,
+    );
   }
 
   // The story on a phone: the reading panel and the night's readouts, portrait and landscape.
