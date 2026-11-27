@@ -687,6 +687,9 @@ footer > span:last-child {
   .topbar > .eyebrow {
     display: none;
   }
+  .brand {
+    min-height: 44px;
+  }
   .about-link,
   .secondary-actions button,
   .experiment button {
