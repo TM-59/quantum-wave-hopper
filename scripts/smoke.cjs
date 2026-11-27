@@ -664,8 +664,10 @@ async function run() {
     const rect = await el.boundingBox();
     check(rect && rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
   }
-  const brand = await mobile.locator('a.brand').boundingBox();
-  check(brand && brand.height >= 44, `390x844: title link is ${brand?.height}px tall`);
+  for (const sel of ['a.brand', 'a.about-link']) {
+    const box = await mobile.locator(sel).boundingBox();
+    check(box && box.width >= 44 && box.height >= 44, `390x844: ${sel} is ${box?.width}x${box?.height}px`);
+  }
   // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
   const sizes = () => {
     const out = { dom: 99, where: '', canvas: 99 };
@@ -755,8 +757,10 @@ async function run() {
       'landscape buttons have 44px touch target',
     );
   }
-  const brandWide = await mobile.locator('a.brand').boundingBox();
-  check(brandWide && brandWide.height >= 44, `844x390: title link is ${brandWide?.height}px tall`);
+  for (const sel of ['a.brand', 'a.about-link']) {
+    const box = await mobile.locator(sel).boundingBox();
+    check(box && box.width >= 44 && box.height >= 44, `844x390: ${sel} is ${box?.width}x${box?.height}px`);
+  }
 
   // The story on a phone: the reading panel and the night's readouts, portrait and landscape.
   await mobile.setViewportSize({ width: 390, height: 844 });
