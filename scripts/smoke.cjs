@@ -664,6 +664,13 @@ async function run() {
     const rect = await el.boundingBox();
     check(rect && rect.width >= 44 && rect.height >= 44, 'buttons have 44px touch target');
   }
+  for (const sel of ['a.brand', 'a.about-link']) {
+    const box = await mobile.locator(sel).boundingBox();
+    check(
+      box && box.width >= 44 && box.height >= 44,
+      `390x844: ${sel} is ${box?.width}x${box?.height}px`,
+    );
+  }
   // Phone legibility: every visible text at least 14 CSS px (DOM and canvas), in portrait and landscape.
   const sizes = () => {
     const out = { dom: 99, where: '', canvas: 99 };
@@ -687,7 +694,15 @@ async function run() {
         out.where = el.className || el.id || el.tagName;
       }
     }
-    for (const row of window.__tmGate.texts()) out.canvas = Math.min(out.canvas, row.px);
+    // The hook reports the font in CSS px; the drawn size also depends on the backing store.
+    // A store taller than dpr x box shrinks every glyph, so scale by the smallest box/store ratio.
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    let ratio = 1;
+    for (const c of document.querySelectorAll('canvas')) {
+      const box = c.getBoundingClientRect();
+      if (box.height && c.height) ratio = Math.min(ratio, (dpr * box.height) / c.height);
+    }
+    for (const row of window.__tmGate.texts()) out.canvas = Math.min(out.canvas, row.px * ratio);
     return out;
   };
   let size = await mobile.evaluate(sizes);
@@ -743,6 +758,13 @@ async function run() {
     check(
       rect && rect.width >= 44 && rect.height >= 44,
       'landscape buttons have 44px touch target',
+    );
+  }
+  for (const sel of ['a.brand', 'a.about-link']) {
+    const box = await mobile.locator(sel).boundingBox();
+    check(
+      box && box.width >= 44 && box.height >= 44,
+      `844x390: ${sel} is ${box?.width}x${box?.height}px`,
     );
   }
 

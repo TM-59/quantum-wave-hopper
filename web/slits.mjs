@@ -119,8 +119,9 @@ export function startSlits(engine, textPx) {
   function canvasSize(canvas) {
     const bounds = canvas.getBoundingClientRect(),
       dpr = Math.min(devicePixelRatio || 1, 2);
-    const w = Math.round(bounds.width * dpr),
-      h = Math.round(bounds.height * dpr);
+    // Floor, not round: a backing store larger than the box would shrink every drawn text below its CSS px.
+    const w = Math.floor(bounds.width * dpr),
+      h = Math.floor(bounds.height * dpr);
     if (w && h && (canvas.width !== w || canvas.height !== h)) {
       canvas.width = w;
       canvas.height = h;

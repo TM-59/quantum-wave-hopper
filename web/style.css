@@ -687,6 +687,9 @@ footer > span:last-child {
   .topbar > .eyebrow {
     display: none;
   }
+  .brand {
+    min-height: 44px;
+  }
   .about-link,
   .secondary-actions button,
   .experiment button {
@@ -1131,6 +1134,9 @@ body[data-mode="story"] #chart-key {
 @media (max-width: 720px) {
   .about-link span {
     display: none;
+  }
+  .about-link {
+    min-width: 44px;
   }
   .top-actions {
     gap: 6px;
