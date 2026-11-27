@@ -1135,6 +1135,9 @@ body[data-mode="story"] #chart-key {
   .about-link span {
     display: none;
   }
+  .about-link {
+    min-width: 44px;
+  }
   .top-actions {
     gap: 6px;
   }
