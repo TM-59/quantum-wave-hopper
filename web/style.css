@@ -1127,3 +1127,15 @@ body[data-mode="story"] #chart-key {
     letter-spacing: 0.3px;
   }
 }
+/* Phones: the ♪ button shares the top bar, so the decorative arrow of "How it works" goes and the gaps narrow. */
+@media (max-width: 720px) {
+  .about-link span {
+    display: none;
+  }
+  .top-actions {
+    gap: 6px;
+  }
+  #lang {
+    padding: 6px 5px;
+  }
+}
